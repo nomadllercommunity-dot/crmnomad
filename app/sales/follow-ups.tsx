@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Lead } from '@/types';
-import { ArrowLeft, Calendar, Clock, Phone, MessageCircle, X, ChevronDown } from 'lucide-react-native';
+import { ArrowLeft, Calendar, Clock, Phone, MessageCircle, X, ChevronDown, Plus, History } from 'lucide-react-native';
 
 interface FollowUpWithLead {
   id: string;
@@ -19,14 +19,31 @@ interface FollowUpWithLead {
   };
 }
 
+interface FollowUpHistory {
+  id: string;
+  action_type: string;
+  follow_up_note: string;
+  created_at: string;
+  next_follow_up_date: string | null;
+  next_follow_up_time: string | null;
+  itinerary_id: string | null;
+  total_amount: number | null;
+  advance_amount: number | null;
+  due_amount: number | null;
+  transaction_id: string | null;
+  dead_reason: string | null;
+}
+
 export default function FollowUpsScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [followUps, setFollowUps] = useState<FollowUpWithLead[]>([]);
   const [showTodayOnly, setShowTodayOnly] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [currentLead, setCurrentLead] = useState<any | null>(null);
+  const [followUpHistory, setFollowUpHistory] = useState<FollowUpHistory[]>([]);
   const [actionType, setActionType] = useState('');
   const [showActionPicker, setShowActionPicker] = useState(false);
   const [remark, setRemark] = useState('');
@@ -133,8 +150,29 @@ export default function FollowUpsScreen() {
 
     if (leadData) {
       setCurrentLead(leadData);
-      setShowFollowUpModal(true);
+      await fetchFollowUpHistory(followUp.lead.id);
+      setShowHistoryModal(true);
     }
+  };
+
+  const fetchFollowUpHistory = async (leadId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('follow_ups')
+        .select('*')
+        .eq('lead_id', leadId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setFollowUpHistory(data || []);
+    } catch (err: any) {
+      console.error('Error fetching follow-up history:', err);
+    }
+  };
+
+  const handleAddNewFollowUp = () => {
+    setShowHistoryModal(false);
+    setShowFollowUpModal(true);
   };
 
   const handleCall = (phoneNumber: string, lead: any) => {
@@ -244,6 +282,22 @@ export default function FollowUpsScreen() {
     setDeadReason('');
     setCurrentLead(null);
   }
+
+  function handleCloseHistoryModal() {
+    setShowHistoryModal(false);
+    setCurrentLead(null);
+    setFollowUpHistory([]);
+  }
+
+  const getActionTypeLabel = (actionType: string) => {
+    const type = actionTypes.find(t => t.value === actionType);
+    return type?.label || actionType;
+  };
+
+  const formatHistoryDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   const handleDateChange = (text: string) => {
     setDateText(text);
@@ -359,6 +413,124 @@ export default function FollowUpsScreen() {
           })
         )}
       </ScrollView>
+
+      <Modal
+        visible={showHistoryModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCloseHistoryModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Follow-Up History</Text>
+              <TouchableOpacity onPress={handleCloseHistoryModal}>
+                <View style={styles.iconContainer}>
+                  <X size={24} color="#666" />
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {currentLead && (
+              <View style={styles.leadInfo}>
+                <Text style={styles.leadInfoName}>{currentLead.client_name}</Text>
+                <Text style={styles.leadInfoDetail}>{currentLead.place} • {currentLead.no_of_pax} Pax</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.addFollowUpButton}
+              onPress={handleAddNewFollowUp}
+            >
+              <View style={styles.buttonContent}>
+                <View style={styles.iconContainer}>
+                  <Plus size={20} color="#fff" />
+                </View>
+                <Text style={styles.addFollowUpButtonText}>Add New Follow-Up</Text>
+              </View>
+            </TouchableOpacity>
+
+            <ScrollView style={styles.historyScroll} contentContainerStyle={styles.historyScrollContent}>
+              {followUpHistory.length === 0 ? (
+                <View style={styles.emptyHistoryContainer}>
+                  <View style={styles.iconContainer}>
+                    <History size={48} color="#ccc" />
+                  </View>
+                  <Text style={styles.emptyHistoryText}>No follow-up history</Text>
+                </View>
+              ) : (
+                followUpHistory.map((history) => (
+                  <View key={history.id} style={styles.historyCard}>
+                    <View style={styles.historyHeader}>
+                      <Text style={styles.historyActionType}>{getActionTypeLabel(history.action_type)}</Text>
+                      <Text style={styles.historyDate}>{formatHistoryDate(history.created_at)}</Text>
+                    </View>
+
+                    {history.follow_up_note && (
+                      <View style={styles.historyNote}>
+                        <Text style={styles.historyNoteLabel}>Note:</Text>
+                        <Text style={styles.historyNoteText}>{history.follow_up_note}</Text>
+                      </View>
+                    )}
+
+                    {history.next_follow_up_date && (
+                      <View style={styles.historyDetail}>
+                        <View style={styles.historyDetailRow}>
+                          <View style={styles.iconContainer}>
+                            <Calendar size={14} color="#666" />
+                          </View>
+                          <Text style={styles.historyDetailText}>
+                            Next Follow-Up: {new Date(history.next_follow_up_date).toLocaleDateString()}
+                            {history.next_follow_up_time && ` at ${history.next_follow_up_time.slice(0, 5)}`}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {history.itinerary_id && (
+                      <View style={styles.historyDetail}>
+                        <Text style={styles.historyDetailLabel}>Itinerary ID:</Text>
+                        <Text style={styles.historyDetailValue}>{history.itinerary_id}</Text>
+                      </View>
+                    )}
+
+                    {history.total_amount && (
+                      <View style={styles.historyAmounts}>
+                        <View style={styles.historyAmountRow}>
+                          <Text style={styles.historyAmountLabel}>Total:</Text>
+                          <Text style={styles.historyAmountValue}>₹{history.total_amount}</Text>
+                        </View>
+                        <View style={styles.historyAmountRow}>
+                          <Text style={styles.historyAmountLabel}>Advance:</Text>
+                          <Text style={styles.historyAmountValue}>₹{history.advance_amount}</Text>
+                        </View>
+                        <View style={styles.historyAmountRow}>
+                          <Text style={styles.historyAmountLabel}>Due:</Text>
+                          <Text style={[styles.historyAmountValue, styles.dueAmountText]}>₹{history.due_amount}</Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {history.transaction_id && (
+                      <View style={styles.historyDetail}>
+                        <Text style={styles.historyDetailLabel}>Transaction ID:</Text>
+                        <Text style={styles.historyDetailValue}>{history.transaction_id}</Text>
+                      </View>
+                    )}
+
+                    {history.dead_reason && (
+                      <View style={styles.historyDetail}>
+                        <Text style={styles.historyDetailLabel}>Reason:</Text>
+                        <Text style={styles.historyDetailValue}>{history.dead_reason}</Text>
+                      </View>
+                    )}
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={showFollowUpModal}
@@ -917,6 +1089,126 @@ const styles = StyleSheet.create({
   dueAmountValue: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#3b82f6',
+  },
+  addFollowUpButton: {
+    backgroundColor: '#3b82f6',
+    padding: 14,
+    borderRadius: 8,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addFollowUpButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  historyScroll: {
+    flex: 1,
+  },
+  historyScrollContent: {
+    paddingBottom: 20,
+  },
+  emptyHistoryContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyHistoryText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 16,
+  },
+  historyCard: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  historyActionType: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    flex: 1,
+  },
+  historyDate: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+  },
+  historyNote: {
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  historyNoteLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 4,
+  },
+  historyNoteText: {
+    fontSize: 14,
+    color: '#1a1a1a',
+    lineHeight: 20,
+  },
+  historyDetail: {
+    marginBottom: 8,
+  },
+  historyDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  historyDetailText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  historyDetailLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 2,
+  },
+  historyDetailValue: {
+    fontSize: 14,
+    color: '#1a1a1a',
+  },
+  historyAmounts: {
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  historyAmountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  historyAmountLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  historyAmountValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  dueAmountText: {
     color: '#3b82f6',
   },
 });
