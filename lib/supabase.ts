@@ -3,17 +3,17 @@ import 'react-native-url-polyfill/auto';
 import Constants from 'expo-constants';
 
 const supabaseUrl =
-  process.env.EXPO_PUBLIC_SUPABASE_URL ||
   Constants.expoConfig?.extra?.supabaseUrl ||
+  process.env.EXPO_PUBLIC_SUPABASE_URL ||
   '';
 
 const supabaseAnonKey =
-  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
   Constants.expoConfig?.extra?.supabaseAnonKey ||
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
   '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase credentials');
+  throw new Error('Missing Supabase credentials. Please check your app.json configuration.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
