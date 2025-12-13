@@ -23,10 +23,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const userData = await AsyncStorage.getItem('user');
       if (userData) {
-        setUser(JSON.parse(userData));
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
       }
     } catch (error) {
       console.error('Error loading user:', error);
+      // Clear corrupted data if any
+      try {
+        await AsyncStorage.removeItem('user');
+      } catch (e) {
+        console.error('Error clearing corrupted user data:', e);
+      }
     } finally {
       setIsLoading(false);
     }

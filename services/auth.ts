@@ -17,7 +17,11 @@ export async function loginUser(username: string, password: string): Promise<Use
       .eq('status', 'active')
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error:', error);
+      throw new Error('Unable to connect to server. Please check your internet connection.');
+    }
+
     if (!data) throw new Error('Invalid username or password');
 
     await supabase
@@ -26,9 +30,12 @@ export async function loginUser(username: string, password: string): Promise<Use
       .eq('id', data.id);
 
     return data as User;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
-    throw error;
+    if (error.message) {
+      throw error;
+    }
+    throw new Error('An unexpected error occurred. Please try again.');
   }
 }
 
