@@ -10,26 +10,32 @@ export async function loginUser(username: string, password: string): Promise<Use
     );
 
     const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('username', username)
-      .eq('password_hash', passwordHash)
-      .eq('status', 'active')
-      .maybeSingle();
+      .rpc('authenticate_user', {
+        p_username: username,
+        p_password_hash: passwordHash
+      });
 
     if (error) {
       console.error('Supabase error:', error);
       throw new Error('Unable to connect to server. Please check your internet connection.');
     }
 
-    if (!data) throw new Error('Invalid username or password');
+    if (!data || data.length === 0) throw new Error('Invalid username or password');
+
+    const user = data[0];
+
+    await supabase
+      .rpc('set_user_context', {
+        user_id: user.id,
+        user_role: user.role
+      });
 
     await supabase
       .from('users')
       .update({ last_login: new Date().toISOString() })
-      .eq('id', data.id);
+      .eq('id', user.id);
 
-    return data as User;
+    return user as User;
   } catch (error: any) {
     console.error('Login error:', error);
     if (error.message) {
