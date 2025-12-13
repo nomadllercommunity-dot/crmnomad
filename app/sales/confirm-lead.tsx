@@ -114,7 +114,7 @@ export default function ConfirmLeadScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
         <View style={styles.leadInfo}>
           <Text style={styles.leadName}>{lead?.client_name}</Text>
           <Text style={styles.leadDetail}>{lead?.place} - {lead?.no_of_pax} Pax</Text>
@@ -128,6 +128,8 @@ export default function ConfirmLeadScreen() {
             value={formData.travelDate}
             onChangeText={(text) => setFormData({ ...formData, travelDate: text })}
             placeholder="YYYY-MM-DD"
+            returnKeyType="next"
+            keyboardType="number-pad"
             {...(Platform.OS === 'web' ? { type: 'date' as any } : {})}
           />
         </View>
@@ -138,7 +140,8 @@ export default function ConfirmLeadScreen() {
           value={formData.totalAmount}
           onChangeText={(text) => setFormData({ ...formData, totalAmount: text })}
           placeholder="Enter total booking amount"
-          keyboardType="numeric"
+          keyboardType="decimal-pad"
+          returnKeyType="next"
         />
 
         <Text style={styles.label}>Advance Amount *</Text>
@@ -147,7 +150,8 @@ export default function ConfirmLeadScreen() {
           value={formData.advanceAmount}
           onChangeText={(text) => setFormData({ ...formData, advanceAmount: text })}
           placeholder="Enter advance payment received"
-          keyboardType="numeric"
+          keyboardType="decimal-pad"
+          returnKeyType="next"
         />
 
         <Text style={styles.label}>Payment Mode *</Text>
@@ -215,6 +219,8 @@ export default function ConfirmLeadScreen() {
               value={formData.transactionId}
               onChangeText={(text) => setFormData({ ...formData, transactionId: text })}
               placeholder="Enter UPI transaction number"
+              returnKeyType="next"
+              keyboardType="number-pad"
             />
           </>
         )}
@@ -227,6 +233,8 @@ export default function ConfirmLeadScreen() {
               value={formData.transactionId}
               onChangeText={(text) => setFormData({ ...formData, transactionId: text })}
               placeholder="Enter transaction ID"
+              returnKeyType="next"
+              keyboardType="number-pad"
             />
           </>
         )}
@@ -237,6 +245,7 @@ export default function ConfirmLeadScreen() {
           value={formData.itineraryId}
           onChangeText={(text) => setFormData({ ...formData, itineraryId: text })}
           placeholder="Enter itinerary reference ID"
+          returnKeyType="next"
         />
 
         <Text style={styles.label}>Remark</Text>
@@ -247,6 +256,8 @@ export default function ConfirmLeadScreen() {
           placeholder="Enter any additional remarks"
           multiline
           numberOfLines={4}
+          returnKeyType="done"
+          blurOnSubmit={true}
         />
 
         <TouchableOpacity

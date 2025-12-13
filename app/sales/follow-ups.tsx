@@ -46,6 +46,7 @@ export default function FollowUpsScreen() {
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [currentLead, setCurrentLead] = useState<any | null>(null);
   const [followUpHistory, setFollowUpHistory] = useState<FollowUpHistory[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [actionType, setActionType] = useState('');
   const [showActionPicker, setShowActionPicker] = useState(false);
   const [remark, setRemark] = useState('');
@@ -160,6 +161,7 @@ export default function FollowUpsScreen() {
   };
 
   const fetchFollowUpHistory = async (leadId: string) => {
+    setHistoryLoading(true);
     try {
       const { data, error } = await supabase
         .from('follow_ups')
@@ -171,6 +173,8 @@ export default function FollowUpsScreen() {
       setFollowUpHistory(data || []);
     } catch (err: any) {
       console.error('Error fetching follow-up history:', err);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -516,8 +520,12 @@ This is a 7-day advance reminder for the travel date.`;
               </View>
             </TouchableOpacity>
 
-            <ScrollView style={styles.historyScroll} contentContainerStyle={styles.historyScrollContent}>
-              {followUpHistory.length === 0 ? (
+            <ScrollView style={styles.historyScroll} contentContainerStyle={styles.historyScrollContent} keyboardShouldPersistTaps="handled">
+              {historyLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#3b82f6" />
+                </View>
+              ) : followUpHistory.length === 0 ? (
                 <View style={styles.emptyHistoryContainer}>
                   <View style={styles.iconContainer}>
                     <History size={48} color="#ccc" />

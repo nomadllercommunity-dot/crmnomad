@@ -107,7 +107,7 @@ export default function AddSalesPersonScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Add New Sales Person</Text>
 
@@ -117,6 +117,8 @@ export default function AddSalesPersonScreen() {
             value={formData.fullName}
             onChangeText={(text) => setFormData({ ...formData, fullName: text })}
             placeholder="Enter full name"
+            returnKeyType="next"
+            autoCapitalize="words"
           />
 
           <Text style={styles.label}>Email *</Text>
@@ -127,6 +129,7 @@ export default function AddSalesPersonScreen() {
             placeholder="Enter email address"
             keyboardType="email-address"
             autoCapitalize="none"
+            returnKeyType="next"
           />
 
           <Text style={styles.label}>Phone Number</Text>
@@ -136,6 +139,7 @@ export default function AddSalesPersonScreen() {
             onChangeText={(text) => setFormData({ ...formData, phone: text })}
             placeholder="Enter phone number"
             keyboardType="phone-pad"
+            returnKeyType="next"
           />
 
           <Text style={styles.label}>Username *</Text>
@@ -145,6 +149,7 @@ export default function AddSalesPersonScreen() {
             onChangeText={(text) => setFormData({ ...formData, username: text })}
             placeholder="Enter username"
             autoCapitalize="none"
+            returnKeyType="next"
           />
 
           <Text style={styles.label}>Password *</Text>
@@ -155,6 +160,9 @@ export default function AddSalesPersonScreen() {
               onChangeText={(text) => setFormData({ ...formData, password: text })}
               placeholder="Enter password"
               secureTextEntry={!showPassword}
+              returnKeyType="done"
+              blurOnSubmit={true}
+              autoCapitalize="none"
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}

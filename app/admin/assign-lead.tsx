@@ -176,7 +176,7 @@ export default function AssignLeadScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
         <Text style={styles.label}>Lead Type</Text>
         <View style={styles.radioGroup}>
           {(['normal', 'urgent', 'hot'] as const).map((type) => (
@@ -206,6 +206,8 @@ export default function AssignLeadScreen() {
           value={formData.clientName}
           onChangeText={(text) => setFormData({ ...formData, clientName: text })}
           placeholder="Enter client name"
+          returnKeyType="next"
+          autoCapitalize="words"
         />
 
         <Text style={styles.label}>Country Code *</Text>
@@ -227,6 +229,7 @@ export default function AssignLeadScreen() {
             onChangeText={(text) => setFormData({ ...formData, contactNumber: text })}
             placeholder="Enter contact number"
             keyboardType="phone-pad"
+            returnKeyType="next"
           />
           <TouchableOpacity
             style={styles.actionButton}
@@ -249,6 +252,7 @@ export default function AssignLeadScreen() {
           onChangeText={(text) => setFormData({ ...formData, noOfPax: text })}
           placeholder="Enter number of passengers"
           keyboardType="numeric"
+          returnKeyType="next"
         />
 
         <Text style={styles.label}>Place/Destination *</Text>
@@ -257,6 +261,8 @@ export default function AssignLeadScreen() {
           value={formData.place}
           onChangeText={(text) => setFormData({ ...formData, place: text })}
           placeholder="Enter destination"
+          returnKeyType="next"
+          autoCapitalize="words"
         />
 
         <Text style={styles.label}>Date Type</Text>
@@ -305,6 +311,8 @@ export default function AssignLeadScreen() {
                 value={formData.travelDate}
                 onChangeText={(text) => setFormData({ ...formData, travelDate: text })}
                 placeholder="YYYY-MM-DD"
+                returnKeyType="next"
+                keyboardType="number-pad"
               />
             </View>
           </>
@@ -329,7 +337,8 @@ export default function AssignLeadScreen() {
           value={formData.expectedBudget}
           onChangeText={(text) => setFormData({ ...formData, expectedBudget: text })}
           placeholder="Enter budget amount"
-          keyboardType="numeric"
+          keyboardType="decimal-pad"
+          returnKeyType="next"
         />
 
         <Text style={styles.label}>Remark</Text>
@@ -340,6 +349,8 @@ export default function AssignLeadScreen() {
           placeholder="Enter any additional remarks"
           multiline
           numberOfLines={4}
+          returnKeyType="done"
+          blurOnSubmit={true}
         />
 
         <Text style={styles.label}>Assign to Sales Person *</Text>

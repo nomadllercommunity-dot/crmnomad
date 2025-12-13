@@ -235,6 +235,9 @@ export default function AdminChatScreen() {
                   placeholder="Type a message..."
                   multiline
                   maxLength={500}
+                  returnKeyType="send"
+                  blurOnSubmit={false}
+                  editable={!sending}
                 />
                 <TouchableOpacity
                   style={[styles.sendButton, (!messageText.trim() || sending) && styles.sendButtonDisabled]}
