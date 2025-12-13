@@ -48,8 +48,8 @@
       "typedRoutes": true
     },
     "extra": {
-      "supabaseUrl": "https://hrnfxeushmgknfhirncq.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhybmZ4ZXVzaG1na25maGlybmNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1NTM0MDUsImV4cCI6MjA4MTEyOTQwNX0.cWydZFxM3ehio-bcqeCXrOt6tco4AAaKRmHXFlTiTHs"
+      "supabaseUrl": "https://iuijnhbxlpvlhgsapzbl.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1aWpuaGJ4bHB2bGhnc2FwemJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1OTcyNTksImV4cCI6MjA4MTE3MzI1OX0.hh8wfPEoOWgWlPOe3n4BZGBrafdw7AsERpgr3pNY08c"
     }
   }
 }

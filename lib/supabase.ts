@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import 'react-native-url-polyfill/auto';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const supabaseUrl =
   Constants.expoConfig?.extra?.supabaseUrl ||
@@ -12,12 +13,10 @@ const supabaseAnonKey =
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
   '';
 
-console.log('Supabase URL:', supabaseUrl ? 'Found' : 'Missing');
-console.log('Supabase Key:', supabaseAnonKey ? 'Found' : 'Missing');
-
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase credentials!');
-  console.error('Constants.expoConfig:', Constants.expoConfig);
+  console.error('URL:', supabaseUrl ? 'Found' : 'Missing');
+  console.error('Key:', supabaseAnonKey ? 'Found' : 'Missing');
 }
 
 export const supabase = createClient(
@@ -25,7 +24,21 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder-key',
   {
     auth: {
-      persistSession: false,
+      storage: AsyncStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
     },
   }
 );
+
+export async function setUserContext(userId: string, userRole: string) {
+  try {
+    await supabase.rpc('set_user_context', {
+      user_id: userId,
+      user_role: userRole,
+    });
+  } catch (error) {
+    console.error('Error setting user context:', error);
+  }
+}

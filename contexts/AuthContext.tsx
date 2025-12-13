@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '@/types';
+import { supabase, setUserContext } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -16,22 +17,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    console.log('AuthProvider: Starting to load user...');
-    loadUser()
-      .then(() => console.log('AuthProvider: User loaded successfully'))
-      .catch(err => {
-        console.error('Failed to load user on mount:', err);
-      });
+    loadUser().catch(err => {
+      console.error('Failed to load user:', err);
+    });
   }, []);
 
   const loadUser = async () => {
     try {
-      console.log('AuthProvider: Getting user from AsyncStorage...');
       const userData = await AsyncStorage.getItem('user');
-      console.log('AuthProvider: Got user data:', userData ? 'exists' : 'null');
       if (userData) {
         const parsed = JSON.parse(userData);
-        console.log('AuthProvider: Parsed user:', parsed);
+        await setUserContext(parsed.id, parsed.role);
         setUser(parsed);
       }
     } catch (error) {
@@ -42,7 +38,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Error clearing corrupted user data:', e);
       }
     } finally {
-      console.log('AuthProvider: Setting isLoading to false');
       setIsLoading(false);
     }
   };
@@ -50,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (userData: User) => {
     try {
       await AsyncStorage.setItem('user', JSON.stringify(userData));
+      await setUserContext(userData.id, userData.role);
       setUser(userData);
     } catch (error) {
       console.error('Error saving user:', error);

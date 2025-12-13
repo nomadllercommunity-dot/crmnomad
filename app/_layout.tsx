@@ -5,7 +5,6 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function RootLayout() {
-  console.log('RootLayout: Rendering...');
   useFrameworkReady();
 
   return (
