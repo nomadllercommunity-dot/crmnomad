@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Lead } from '@/types';
 import { ArrowLeft, Phone, Calendar, Clock } from 'lucide-react-native';
+import DateTimePickerComponent from '@/components/DateTimePicker';
 
 export default function LeadActionScreen() {
   const { user } = useAuth();
@@ -18,8 +19,8 @@ export default function LeadActionScreen() {
 
   const [updateType, setUpdateType] = useState<string>('');
   const [remark, setRemark] = useState('');
-  const [followUpDate, setFollowUpDate] = useState('');
-  const [followUpTime, setFollowUpTime] = useState('');
+  const [followUpDate, setFollowUpDate] = useState<Date>(new Date());
+  const [followUpTime, setFollowUpTime] = useState<Date>(new Date());
   const [followUpHistory, setFollowUpHistory] = useState<any[]>([]);
 
   useEffect(() => {
@@ -126,7 +127,9 @@ export default function LeadActionScreen() {
           .update({ status: 'dead', updated_at: new Date().toISOString() })
           .eq('id', leadId);
       } else if (updateType === 'follow_up') {
-        const followUpDateTime = `${followUpDate}T${followUpTime}:00`;
+        const dateString = followUpDate.toISOString().split('T')[0];
+        const timeString = followUpTime.toTimeString().slice(0, 5);
+        const followUpDateTime = `${dateString}T${timeString}:00`;
 
         await supabase.from('follow_ups').insert([
           {
@@ -249,29 +252,19 @@ export default function LeadActionScreen() {
 
         {updateType === 'follow_up' && (
           <>
-            <Text style={styles.label}>Next Follow-Up Date *</Text>
-            <View style={styles.dateTimeInputContainer}>
-              <Calendar size={20} color="#666" />
-              <TextInput
-                style={styles.dateTimeInput}
-                value={followUpDate}
-                onChangeText={setFollowUpDate}
-                placeholder="YYYY-MM-DD"
-                {...(Platform.OS === 'web' ? { type: 'date' as any } : {})}
-              />
-            </View>
+            <DateTimePickerComponent
+              label="Next Follow-Up Date *"
+              value={followUpDate}
+              onChange={setFollowUpDate}
+              mode="date"
+            />
 
-            <Text style={styles.label}>Next Follow-Up Time *</Text>
-            <View style={styles.dateTimeInputContainer}>
-              <Clock size={20} color="#666" />
-              <TextInput
-                style={styles.dateTimeInput}
-                value={followUpTime}
-                onChangeText={setFollowUpTime}
-                placeholder="HH:MM"
-                {...(Platform.OS === 'web' ? { type: 'time' as any } : {})}
-              />
-            </View>
+            <DateTimePickerComponent
+              label="Next Follow-Up Time *"
+              value={followUpTime}
+              onChange={setFollowUpTime}
+              mode="time"
+            />
           </>
         )}
 

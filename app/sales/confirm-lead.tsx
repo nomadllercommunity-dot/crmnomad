@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Lead } from '@/types';
 import { ArrowLeft, Calendar, ChevronDown } from 'lucide-react-native';
+import DateTimePickerComponent from '@/components/DateTimePicker';
 
 export default function ConfirmLeadScreen() {
   const { user } = useAuth();
@@ -24,6 +25,8 @@ export default function ConfirmLeadScreen() {
     paymentMode: '',
     remark: '',
   });
+
+  const [selectedTravelDate, setSelectedTravelDate] = useState<Date | null>(null);
 
   useEffect(() => {
     fetchLead();
@@ -120,19 +123,15 @@ export default function ConfirmLeadScreen() {
           <Text style={styles.leadDetail}>{lead?.place} - {lead?.no_of_pax} Pax</Text>
         </View>
 
-        <Text style={styles.label}>Travel Date *</Text>
-        <View style={styles.dateTimeInputContainer}>
-          <Calendar size={20} color="#666" />
-          <TextInput
-            style={styles.dateTimeInput}
-            value={formData.travelDate}
-            onChangeText={(text) => setFormData({ ...formData, travelDate: text })}
-            placeholder="YYYY-MM-DD"
-            returnKeyType="next"
-            keyboardType="number-pad"
-            {...(Platform.OS === 'web' ? { type: 'date' as any } : {})}
-          />
-        </View>
+        <DateTimePickerComponent
+          label="Travel Date *"
+          value={selectedTravelDate}
+          onChange={(date) => {
+            setSelectedTravelDate(date);
+            setFormData({ ...formData, travelDate: date.toISOString().split('T')[0] });
+          }}
+          mode="date"
+        />
 
         <Text style={styles.label}>Total Amount *</Text>
         <TextInput

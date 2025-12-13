@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Lead } from '@/types';
 import { ArrowLeft, Phone, MessageCircle, MapPin, Users, DollarSign, Calendar, X, ChevronDown } from 'lucide-react-native';
+import DateTimePickerComponent from '@/components/DateTimePicker';
 
 export default function HotLeadsScreen() {
   const { user } = useAuth();
@@ -18,8 +19,6 @@ export default function HotLeadsScreen() {
   const [remark, setRemark] = useState('');
   const [nextFollowUpDate, setNextFollowUpDate] = useState(new Date());
   const [nextFollowUpTime, setNextFollowUpTime] = useState(new Date());
-  const [dateText, setDateText] = useState('');
-  const [timeText, setTimeText] = useState('');
   const [itineraryId, setItineraryId] = useState('');
   const [totalAmount, setTotalAmount] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState('');
@@ -137,8 +136,8 @@ export default function HotLeadsScreen() {
 
       // Add conditional fields based on action type
       if (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType)) {
-        const dateValue = dateText || nextFollowUpDate.toISOString().split('T')[0];
-        const timeValue = timeText || nextFollowUpTime.toTimeString().split(':').slice(0, 2).join(':');
+        const dateValue = nextFollowUpDate.toISOString().split('T')[0];
+        const timeValue = nextFollowUpTime.toTimeString().split(':').slice(0, 2).join(':');
 
         followUpData.next_follow_up_date = dateValue;
         followUpData.next_follow_up_time = timeValue + ':00';
@@ -197,8 +196,6 @@ export default function HotLeadsScreen() {
     setRemark('');
     setNextFollowUpDate(new Date());
     setNextFollowUpTime(new Date());
-    setDateText('');
-    setTimeText('');
     setItineraryId('');
     setTotalAmount('');
     setAdvanceAmount('');
@@ -207,27 +204,6 @@ export default function HotLeadsScreen() {
     setCurrentLead(null);
   }
 
-  const handleDateChange = (text: string) => {
-    setDateText(text);
-    const parsed = new Date(text);
-    if (!isNaN(parsed.getTime())) {
-      setNextFollowUpDate(parsed);
-    }
-  };
-
-  const handleTimeChange = (text: string) => {
-    setTimeText(text);
-    const timeMatch = text.match(/^(\d{1,2}):(\d{2})$/);
-    if (timeMatch) {
-      const hours = parseInt(timeMatch[1]);
-      const minutes = parseInt(timeMatch[2]);
-      if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
-        const newTime = new Date();
-        newTime.setHours(hours, minutes);
-        setNextFollowUpTime(newTime);
-      }
-    }
-  };
 
   if (loading) {
     return (
@@ -408,25 +384,19 @@ export default function HotLeadsScreen() {
 
               {['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (
                 <>
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Next Follow-Up Date *</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="YYYY-MM-DD"
-                      value={dateText || nextFollowUpDate.toISOString().split('T')[0]}
-                      onChangeText={handleDateChange}
-                    />
-                  </View>
+                  <DateTimePickerComponent
+                    label="Next Follow-Up Date *"
+                    value={nextFollowUpDate}
+                    onChange={setNextFollowUpDate}
+                    mode="date"
+                  />
 
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>Next Follow-Up Time *</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="HH:MM (24-hour)"
-                      value={timeText || nextFollowUpTime.toTimeString().slice(0, 5)}
-                      onChangeText={handleTimeChange}
-                    />
-                  </View>
+                  <DateTimePickerComponent
+                    label="Next Follow-Up Time *"
+                    value={nextFollowUpTime}
+                    onChange={setNextFollowUpTime}
+                    mode="time"
+                  />
                 </>
               )}
 
@@ -545,8 +515,7 @@ export default function HotLeadsScreen() {
                   styles.modalButton,
                   styles.saveButton,
                   (saving || !actionType || !remark.trim() ||
-                    (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!dateText && !nextFollowUpDate)) ||
-                    (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!timeText && !nextFollowUpTime)) ||
+                    (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!nextFollowUpDate || !nextFollowUpTime)) ||
                     (actionType === 'confirmed_advance_paid' && (!itineraryId || !totalAmount || !advanceAmount || !transactionId)) ||
                     (actionType === 'dead' && !deadReason)
                   ) && styles.disabledButton
@@ -554,8 +523,7 @@ export default function HotLeadsScreen() {
                 onPress={handleSaveFollowUp}
                 disabled={
                   saving || !actionType || !remark.trim() ||
-                  (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!dateText && !nextFollowUpDate)) ||
-                  (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!timeText && !nextFollowUpTime)) ||
+                  (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!nextFollowUpDate || !nextFollowUpTime)) ||
                   (actionType === 'confirmed_advance_paid' && (!itineraryId || !totalAmount || !advanceAmount || !transactionId)) ||
                   (actionType === 'dead' && !deadReason)
                 }
