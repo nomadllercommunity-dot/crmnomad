@@ -1,10 +1,11 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Linking, Modal, TextInput, AppState, AppStateStatus } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Linking, Modal, TextInput, AppState, AppStateStatus, Platform } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Lead } from '@/types';
-import { ArrowLeft, Phone, MessageCircle, MapPin, Users, DollarSign, Calendar, X } from 'lucide-react-native';
+import { ArrowLeft, Phone, MessageCircle, MapPin, Users, DollarSign, Calendar, X, ChevronDown } from 'lucide-react-native';
 
 export default function HotLeadsScreen() {
   const { user } = useAuth();
@@ -13,12 +14,41 @@ export default function HotLeadsScreen() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [currentLead, setCurrentLead] = useState<Lead | null>(null);
-  const [followUpNote, setFollowUpNote] = useState('');
-  const [followUpDate, setFollowUpDate] = useState('');
+  const [actionType, setActionType] = useState('');
+  const [showActionPicker, setShowActionPicker] = useState(false);
+  const [remark, setRemark] = useState('');
+  const [nextFollowUpDate, setNextFollowUpDate] = useState(new Date());
+  const [nextFollowUpTime, setNextFollowUpTime] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [itineraryId, setItineraryId] = useState('');
+  const [totalAmount, setTotalAmount] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [transactionId, setTransactionId] = useState('');
+  const [deadReason, setDeadReason] = useState('');
+  const [showDeadReasonPicker, setShowDeadReasonPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const appState = useRef(AppState.currentState);
   const callInitiatedRef = useRef(false);
   const leadForCallRef = useRef<Lead | null>(null);
+
+  const actionTypes = [
+    { label: 'Itinerary Sent', value: 'itinerary_sent' },
+    { label: 'Itinerary Updated', value: 'itinerary_updated' },
+    { label: 'Follow Up', value: 'follow_up' },
+    { label: 'Confirm and Advance Paid', value: 'confirmed_advance_paid' },
+    { label: 'Dead', value: 'dead' },
+  ];
+
+  const deadReasons = [
+    'Budget too high',
+    'Found another agency',
+    'Plans cancelled',
+    'Not responding',
+    'Changed destination',
+    'Timing not suitable',
+    'Other',
+  ];
 
   useEffect(() => {
     fetchLeads();
@@ -85,6 +115,92 @@ export default function HotLeadsScreen() {
       console.error('Error opening WhatsApp:', err);
     });
   };
+
+  const calculateDueAmount = () => {
+    const total = parseFloat(totalAmount) || 0;
+    const advance = parseFloat(advanceAmount) || 0;
+    return total - advance;
+  };
+
+  async function handleSaveFollowUp() {
+    if (!currentLead || !actionType || !remark.trim()) return;
+
+    setSaving(true);
+    try {
+      const followUpData: any = {
+        lead_id: currentLead.id,
+        sales_person_id: user?.id,
+        action_type: actionType,
+        follow_up_note: remark.trim(),
+        created_at: new Date().toISOString(),
+      };
+
+      // Add conditional fields based on action type
+      if (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType)) {
+        followUpData.next_follow_up_date = nextFollowUpDate.toISOString().split('T')[0];
+        followUpData.next_follow_up_time = nextFollowUpTime.toTimeString().split(' ')[0];
+      }
+
+      if (actionType === 'confirmed_advance_paid') {
+        followUpData.itinerary_id = itineraryId;
+        followUpData.total_amount = parseFloat(totalAmount);
+        followUpData.advance_amount = parseFloat(advanceAmount);
+        followUpData.due_amount = calculateDueAmount();
+        followUpData.transaction_id = transactionId;
+
+        // Update lead status to confirmed
+        await supabase
+          .from('leads')
+          .update({ status: 'confirmed' })
+          .eq('id', currentLead.id);
+      }
+
+      if (actionType === 'dead') {
+        followUpData.dead_reason = deadReason;
+
+        // Update lead status to dead
+        await supabase
+          .from('leads')
+          .update({ status: 'dead' })
+          .eq('id', currentLead.id);
+      }
+
+      const { error } = await supabase
+        .from('follow_ups')
+        .insert(followUpData);
+
+      if (error) throw error;
+
+      // Update lead status to follow_up for other action types
+      if (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType)) {
+        await supabase
+          .from('leads')
+          .update({ status: 'follow_up' })
+          .eq('id', currentLead.id);
+      }
+
+      handleCloseModal();
+      fetchLeads();
+    } catch (err: any) {
+      console.error('Error saving follow-up:', err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleCloseModal() {
+    setShowFollowUpModal(false);
+    setActionType('');
+    setRemark('');
+    setNextFollowUpDate(new Date());
+    setNextFollowUpTime(new Date());
+    setItineraryId('');
+    setTotalAmount('');
+    setAdvanceAmount('');
+    setTransactionId('');
+    setDeadReason('');
+    setCurrentLead(null);
+  }
 
   if (loading) {
     return (
@@ -198,40 +314,201 @@ export default function HotLeadsScreen() {
               </View>
             )}
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Follow-Up Notes</Text>
-              <TextInput
-                style={styles.textArea}
-                placeholder="Enter call notes and follow-up details..."
-                value={followUpNote}
-                onChangeText={setFollowUpNote}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
+            <ScrollView style={styles.modalScroll}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Action Type *</Text>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setShowActionPicker(!showActionPicker)}
+                >
+                  <Text style={[styles.pickerButtonText, !actionType && styles.placeholderText]}>
+                    {actionType ? actionTypes.find(a => a.value === actionType)?.label : 'Select action type'}
+                  </Text>
+                  <ChevronDown size={20} color="#666" />
+                </TouchableOpacity>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Next Follow-Up Date (Optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="YYYY-MM-DD"
-                value={followUpDate}
-                onChangeText={setFollowUpDate}
-              />
-            </View>
+                {showActionPicker && (
+                  <View style={styles.pickerOptions}>
+                    {actionTypes.map((type) => (
+                      <TouchableOpacity
+                        key={type.value}
+                        style={styles.pickerOption}
+                        onPress={() => {
+                          setActionType(type.value);
+                          setShowActionPicker(false);
+                        }}
+                      >
+                        <Text style={styles.pickerOptionText}>{type.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (
+                <>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Next Follow-Up Date *</Text>
+                    <TouchableOpacity
+                      style={styles.dateButton}
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <Calendar size={18} color="#666" />
+                      <Text style={styles.dateButtonText}>
+                        {nextFollowUpDate.toLocaleDateString()}
+                      </Text>
+                    </TouchableOpacity>
+                    {showDatePicker && (
+                      <DateTimePicker
+                        value={nextFollowUpDate}
+                        mode="date"
+                        display="default"
+                        onChange={(event, date) => {
+                          setShowDatePicker(Platform.OS === 'ios');
+                          if (date) setNextFollowUpDate(date);
+                        }}
+                      />
+                    )}
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Next Follow-Up Time *</Text>
+                    <TouchableOpacity
+                      style={styles.dateButton}
+                      onPress={() => setShowTimePicker(true)}
+                    >
+                      <Calendar size={18} color="#666" />
+                      <Text style={styles.dateButtonText}>
+                        {nextFollowUpTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </TouchableOpacity>
+                    {showTimePicker && (
+                      <DateTimePicker
+                        value={nextFollowUpTime}
+                        mode="time"
+                        display="default"
+                        onChange={(event, time) => {
+                          setShowTimePicker(Platform.OS === 'ios');
+                          if (time) setNextFollowUpTime(time);
+                        }}
+                      />
+                    )}
+                  </View>
+                </>
+              )}
+
+              {actionType === 'confirmed_advance_paid' && (
+                <>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Itinerary ID *</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter itinerary ID"
+                      value={itineraryId}
+                      onChangeText={setItineraryId}
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Total Amount *</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter total amount"
+                      value={totalAmount}
+                      onChangeText={setTotalAmount}
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Advance Amount *</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter advance amount"
+                      value={advanceAmount}
+                      onChangeText={setAdvanceAmount}
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  {totalAmount && advanceAmount && (
+                    <View style={styles.dueAmountContainer}>
+                      <Text style={styles.dueAmountLabel}>Due Amount:</Text>
+                      <Text style={styles.dueAmountValue}>₹{calculateDueAmount().toFixed(2)}</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Transaction ID *</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter transaction ID"
+                      value={transactionId}
+                      onChangeText={setTransactionId}
+                    />
+                  </View>
+                </>
+              )}
+
+              {actionType === 'dead' && (
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Reason *</Text>
+                  <TouchableOpacity
+                    style={styles.pickerButton}
+                    onPress={() => setShowDeadReasonPicker(!showDeadReasonPicker)}
+                  >
+                    <Text style={[styles.pickerButtonText, !deadReason && styles.placeholderText]}>
+                      {deadReason || 'Select reason'}
+                    </Text>
+                    <ChevronDown size={20} color="#666" />
+                  </TouchableOpacity>
+
+                  {showDeadReasonPicker && (
+                    <View style={styles.pickerOptions}>
+                      {deadReasons.map((reason) => (
+                        <TouchableOpacity
+                          key={reason}
+                          style={styles.pickerOption}
+                          onPress={() => {
+                            setDeadReason(reason);
+                            setShowDeadReasonPicker(false);
+                          }}
+                        >
+                          <Text style={styles.pickerOptionText}>{reason}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {actionType && (
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Remarks *</Text>
+                  <TextInput
+                    style={styles.textArea}
+                    placeholder="Enter remarks..."
+                    value={remark}
+                    onChangeText={setRemark}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                </View>
+              )}
+            </ScrollView>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={handleCloseModal}
               >
-                <Text style={styles.cancelButtonText}>Skip</Text>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.saveButton]}
                 onPress={handleSaveFollowUp}
-                disabled={saving || !followUpNote.trim()}
+                disabled={saving || !actionType || !remark.trim()}
               >
                 {saving ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -245,52 +522,6 @@ export default function HotLeadsScreen() {
       </Modal>
     </View>
   );
-
-  async function handleSaveFollowUp() {
-    if (!currentLead || !followUpNote.trim()) return;
-
-    setSaving(true);
-    try {
-      const followUpData: any = {
-        lead_id: currentLead.id,
-        salesperson_id: user?.id,
-        follow_up_note: followUpNote.trim(),
-        created_at: new Date().toISOString(),
-      };
-
-      if (followUpDate.trim()) {
-        followUpData.next_follow_up_date = followUpDate;
-      }
-
-      const { error } = await supabase
-        .from('follow_ups')
-        .insert(followUpData);
-
-      if (error) throw error;
-
-      // Update lead status to follow_up if it's not already
-      if (currentLead.status === 'allocated') {
-        await supabase
-          .from('leads')
-          .update({ status: 'follow_up' })
-          .eq('id', currentLead.id);
-      }
-
-      handleCloseModal();
-      fetchLeads(); // Refresh the leads
-    } catch (err: any) {
-      console.error('Error saving follow-up:', err);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleCloseModal() {
-    setShowFollowUpModal(false);
-    setFollowUpNote('');
-    setFollowUpDate('');
-    setCurrentLead(null);
-  }
 }
 
 const styles = StyleSheet.create({
@@ -438,7 +669,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '80%',
+    maxHeight: '85%',
+  },
+  modalScroll: {
+    maxHeight: '60%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -520,5 +754,70 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+    borderRadius: 8,
+    padding: 12,
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    color: '#1a1a1a',
+  },
+  placeholderText: {
+    color: '#999',
+  },
+  pickerOptions: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    maxHeight: 200,
+  },
+  pickerOption: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  pickerOptionText: {
+    fontSize: 16,
+    color: '#1a1a1a',
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+    borderRadius: 8,
+    padding: 12,
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: '#1a1a1a',
+  },
+  dueAmountContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f0f9ff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  dueAmountLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  dueAmountValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#3b82f6',
   },
 });
