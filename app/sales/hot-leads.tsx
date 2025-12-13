@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Lead } from '@/types';
-import { ArrowLeft, Phone, MessageCircle, MapPin, Users, DollarSign, Calendar, X, ChevronDown, Clock } from 'lucide-react-native';
+import { ArrowLeft, Phone, MessageCircle, MapPin, Users, DollarSign, Calendar, X, ChevronDown } from 'lucide-react-native';
 
 export default function HotLeadsScreen() {
   const { user } = useAuth();
@@ -267,37 +267,47 @@ export default function HotLeadsScreen() {
               <View style={styles.leadDetails}>
                 {lead.contact_number && (
                   <View style={styles.detailRow}>
-                    <View style={styles.iconContainer}>
-                      <Phone size={16} color="#666" />
+                    <View style={styles.detailRowContent}>
+                      <View style={styles.iconContainer}>
+                        <Phone size={16} color="#666" />
+                      </View>
+                      <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.contact_number}</Text>
                     </View>
-                    <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.contact_number}</Text>
                   </View>
                 )}
                 <View style={styles.detailRow}>
-                  <View style={styles.iconContainer}>
-                    <MapPin size={16} color="#666" />
+                  <View style={styles.detailRowContent}>
+                    <View style={styles.iconContainer}>
+                      <MapPin size={16} color="#666" />
+                    </View>
+                    <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.place}</Text>
                   </View>
-                  <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.place}</Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <View style={styles.iconContainer}>
-                    <Users size={16} color="#666" />
+                  <View style={styles.detailRowContent}>
+                    <View style={styles.iconContainer}>
+                      <Users size={16} color="#666" />
+                    </View>
+                    <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.no_of_pax} Pax</Text>
                   </View>
-                  <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.no_of_pax} Pax</Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <View style={styles.iconContainer}>
-                    <Calendar size={16} color="#666" />
+                  <View style={styles.detailRowContent}>
+                    <View style={styles.iconContainer}>
+                      <Calendar size={16} color="#666" />
+                    </View>
+                    <Text style={[styles.detailText, styles.detailTextWithIcon]}>
+                      {lead.travel_date || lead.travel_month || 'Date TBD'}
+                    </Text>
                   </View>
-                  <Text style={[styles.detailText, styles.detailTextWithIcon]}>
-                    {lead.travel_date || lead.travel_month || 'Date TBD'}
-                  </Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <View style={styles.iconContainer}>
-                    <DollarSign size={16} color="#666" />
+                  <View style={styles.detailRowContent}>
+                    <View style={styles.iconContainer}>
+                      <DollarSign size={16} color="#666" />
+                    </View>
+                    <Text style={[styles.detailText, styles.detailTextWithIcon]}>₹{lead.expected_budget}</Text>
                   </View>
-                  <Text style={[styles.detailText, styles.detailTextWithIcon]}>₹{lead.expected_budget}</Text>
                 </View>
               </View>
 
@@ -314,20 +324,24 @@ export default function HotLeadsScreen() {
                   onPress={() => lead.contact_number && handleCall(lead.contact_number, lead)}
                   disabled={!lead.contact_number}
                 >
-                  <View style={styles.iconContainer}>
-                    <Phone size={20} color="#fff" />
+                  <View style={styles.buttonContent}>
+                    <View style={styles.iconContainer}>
+                      <Phone size={20} color="#fff" />
+                    </View>
+                    <Text style={[styles.actionButtonText, styles.actionButtonTextWithIcon]}>Call</Text>
                   </View>
-                  <Text style={[styles.actionButtonText, styles.actionButtonTextWithIcon]}>Call</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionButton, styles.whatsappButton, !lead.contact_number && styles.disabledButton]}
                   onPress={() => lead.contact_number && handleWhatsApp(lead.contact_number, lead.client_name, lead.place)}
                   disabled={!lead.contact_number}
                 >
-                  <View style={styles.iconContainer}>
-                    <MessageCircle size={20} color="#fff" />
+                  <View style={styles.buttonContent}>
+                    <View style={styles.iconContainer}>
+                      <MessageCircle size={20} color="#fff" />
+                    </View>
+                    <Text style={[styles.actionButtonText, styles.actionButtonTextWithIcon]}>WhatsApp</Text>
                   </View>
-                  <Text style={[styles.actionButtonText, styles.actionButtonTextWithIcon]}>WhatsApp</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -479,7 +493,9 @@ export default function HotLeadsScreen() {
                     <Text style={[styles.pickerButtonText, !deadReason && styles.placeholderText]}>
                       {deadReason || 'Select reason'}
                     </Text>
-                    <ChevronDown size={20} color="#666" />
+                    <View style={styles.iconContainer}>
+                      <ChevronDown size={20} color="#666" />
+                    </View>
                   </TouchableOpacity>
 
                   {showDeadReasonPicker && (
@@ -641,9 +657,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   detailRow: {
+    marginBottom: 8,
+  },
+  detailRowContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
   },
   detailText: {
     fontSize: 14,
@@ -673,12 +691,14 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     padding: 12,
     borderRadius: 8,
     marginRight: 12,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   callButton: {
     backgroundColor: '#3b82f6',
