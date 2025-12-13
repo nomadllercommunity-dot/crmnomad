@@ -17,21 +17,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUser().catch(err => {
-      console.error('Failed to load user:', err);
-    });
+    // Delay loading to ensure everything is initialized
+    const timer = setTimeout(() => {
+      loadUser().catch(err => {
+        console.error('Failed to load user:', err);
+        setIsLoading(false);
+      });
+    }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const loadUser = async () => {
     try {
       const userData = await AsyncStorage.getItem('user');
       if (userData) {
-        const parsed = JSON.parse(userData);
-        // Set user context but don't block on it
-        setUserContext(parsed.id, parsed.role).catch(err => {
-          console.warn('Failed to set user context:', err);
-        });
-        setUser(parsed);
+        try {
+          const parsed = JSON.parse(userData);
+          if (parsed && parsed.id && parsed.role) {
+            // Set user context but don't block on it
+            setUserContext(parsed.id, parsed.role).catch(err => {
+              console.warn('Failed to set user context:', err);
+            });
+            setUser(parsed);
+          } else {
+            console.warn('Invalid user data structure');
+            await AsyncStorage.removeItem('user');
+          }
+        } catch (parseError) {
+          console.error('Error parsing user data:', parseError);
+          await AsyncStorage.removeItem('user');
+        }
       }
     } catch (error) {
       console.error('Error loading user:', error);

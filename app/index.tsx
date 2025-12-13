@@ -15,15 +15,19 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (user && !isLoading) {
-      try {
-        if (user.role === 'admin') {
-          router.replace('/admin');
-        } else {
-          router.replace('/sales');
+      // Delay navigation slightly to ensure router is ready
+      const timer = setTimeout(() => {
+        try {
+          if (user.role === 'admin') {
+            router.replace('/admin');
+          } else {
+            router.replace('/sales');
+          }
+        } catch (error) {
+          console.error('Navigation error:', error);
         }
-      } catch (error) {
-        console.error('Navigation error:', error);
-      }
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [user, isLoading, router]);
 
