@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { User } from '@/types';
 import { ArrowLeft, Check, Calendar, ChevronDown, Phone, MessageCircle } from 'lucide-react-native';
+import DateTimePickerComponent from '@/components/DateTimePicker';
 
 export default function AssignLeadScreen() {
   const { user } = useAuth();
@@ -30,6 +31,8 @@ export default function AssignLeadScreen() {
     assignedTo: '',
     dateType: 'exact' as 'exact' | 'month',
   });
+
+  const [selectedTravelDate, setSelectedTravelDate] = useState<Date | null>(null);
 
   const countryCodes = [
     { code: '+91', name: 'India' },
@@ -302,20 +305,15 @@ export default function AssignLeadScreen() {
         </View>
 
         {formData.dateType === 'exact' ? (
-          <>
-            <Text style={styles.label}>Travel Date *</Text>
-            <View style={styles.dateInputContainer}>
-              <Calendar size={20} color="#3b82f6" style={styles.dateIcon} />
-              <TextInput
-                style={styles.dateInput}
-                value={formData.travelDate}
-                onChangeText={(text) => setFormData({ ...formData, travelDate: text })}
-                placeholder="YYYY-MM-DD"
-                returnKeyType="next"
-                keyboardType="number-pad"
-              />
-            </View>
-          </>
+          <DateTimePickerComponent
+            label="Travel Date *"
+            value={selectedTravelDate}
+            onChange={(date) => {
+              setSelectedTravelDate(date);
+              setFormData({ ...formData, travelDate: date.toISOString().split('T')[0] });
+            }}
+            mode="date"
+          />
         ) : (
           <>
             <Text style={styles.label}>Travel Month *</Text>
