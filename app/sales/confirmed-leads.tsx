@@ -79,25 +79,41 @@ export default function ConfirmedLeadsScreen() {
               <View style={styles.leadHeader}>
                 <Text style={styles.leadName}>{lead.client_name}</Text>
                 <View style={styles.confirmedBadge}>
-                  <CheckCircle size={16} color="#10b981" />
-                  <Text style={styles.confirmedBadgeText}>CONFIRMED</Text>
+                  <View style={styles.badgeContent}>
+                    <View style={styles.iconContainer}>
+                      <CheckCircle size={16} color="#10b981" />
+                    </View>
+                    <Text style={styles.confirmedBadgeText}>CONFIRMED</Text>
+                  </View>
                 </View>
               </View>
 
               <View style={styles.leadDetails}>
                 <View style={styles.detailRow}>
-                  <MapPin size={16} color="#666" />
-                  <Text style={styles.detailText}>{lead.place}</Text>
+                  <View style={styles.detailRowContent}>
+                    <View style={styles.iconContainer}>
+                      <MapPin size={16} color="#666" />
+                    </View>
+                    <Text style={styles.detailText}>{lead.place}</Text>
+                  </View>
                 </View>
                 <View style={styles.detailRow}>
-                  <Users size={16} color="#666" />
-                  <Text style={styles.detailText}>{lead.no_of_pax} Pax</Text>
+                  <View style={styles.detailRowContent}>
+                    <View style={styles.iconContainer}>
+                      <Users size={16} color="#666" />
+                    </View>
+                    <Text style={styles.detailText}>{lead.no_of_pax} Pax</Text>
+                  </View>
                 </View>
                 <View style={styles.detailRow}>
-                  <Calendar size={16} color="#666" />
-                  <Text style={styles.detailText}>
-                    {lead.travel_date || lead.travel_month || 'Date TBD'}
-                  </Text>
+                  <View style={styles.detailRowContent}>
+                    <View style={styles.iconContainer}>
+                      <Calendar size={16} color="#666" />
+                    </View>
+                    <Text style={styles.detailText}>
+                      {lead.travel_date || lead.travel_month || 'Date TBD'}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
@@ -182,13 +198,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   confirmedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     backgroundColor: '#d1fae5',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
+  },
+  badgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  iconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   confirmedBadgeText: {
     color: '#10b981',
@@ -200,6 +222,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   detailRow: {
+    marginBottom: 4,
+  },
+  detailRowContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

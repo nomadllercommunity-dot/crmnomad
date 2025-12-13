@@ -92,22 +92,38 @@ export default function AllocatedLeadsScreen() {
 
               <View style={styles.leadDetails}>
                 <View style={styles.detailRow}>
-                  <MapPin size={16} color="#666" />
-                  <Text style={styles.detailText}>{lead.place}</Text>
+                  <View style={styles.detailRowContent}>
+                    <View style={styles.iconContainer}>
+                      <MapPin size={16} color="#666" />
+                    </View>
+                    <Text style={styles.detailText}>{lead.place}</Text>
+                  </View>
                 </View>
                 <View style={styles.detailRow}>
-                  <Users size={16} color="#666" />
-                  <Text style={styles.detailText}>{lead.no_of_pax} Pax</Text>
+                  <View style={styles.detailRowContent}>
+                    <View style={styles.iconContainer}>
+                      <Users size={16} color="#666" />
+                    </View>
+                    <Text style={styles.detailText}>{lead.no_of_pax} Pax</Text>
+                  </View>
                 </View>
                 <View style={styles.detailRow}>
-                  <Calendar size={16} color="#666" />
-                  <Text style={styles.detailText}>
-                    {lead.travel_date || lead.travel_month || 'Date TBD'}
-                  </Text>
+                  <View style={styles.detailRowContent}>
+                    <View style={styles.iconContainer}>
+                      <Calendar size={16} color="#666" />
+                    </View>
+                    <Text style={styles.detailText}>
+                      {lead.travel_date || lead.travel_month || 'Date TBD'}
+                    </Text>
+                  </View>
                 </View>
                 <View style={styles.detailRow}>
-                  <DollarSign size={16} color="#666" />
-                  <Text style={styles.detailText}>₹{lead.expected_budget}</Text>
+                  <View style={styles.detailRowContent}>
+                    <View style={styles.iconContainer}>
+                      <DollarSign size={16} color="#666" />
+                    </View>
+                    <Text style={styles.detailText}>₹{lead.expected_budget}</Text>
+                  </View>
                 </View>
               </View>
 
@@ -123,15 +139,23 @@ export default function AllocatedLeadsScreen() {
                   style={[styles.actionButton, styles.callButton]}
                   onPress={() => handleCall(lead)}
                 >
-                  <Phone size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Call</Text>
+                  <View style={styles.buttonContent}>
+                    <View style={styles.iconContainer}>
+                      <Phone size={20} color="#fff" />
+                    </View>
+                    <Text style={styles.actionButtonText}>Call</Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionButton, styles.whatsappButton]}
                   onPress={() => handleWhatsApp(lead)}
                 >
-                  <MessageCircle size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>WhatsApp</Text>
+                  <View style={styles.buttonContent}>
+                    <View style={styles.iconContainer}>
+                      <MessageCircle size={20} color="#fff" />
+                    </View>
+                    <Text style={styles.actionButtonText}>WhatsApp</Text>
+                  </View>
                 </TouchableOpacity>
               </View>
             </View>
@@ -223,9 +247,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   detailRow: {
+    marginBottom: 4,
+  },
+  detailRowContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  iconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   detailText: {
     fontSize: 14,
@@ -253,11 +284,13 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+    padding: 12,
+    borderRadius: 8,
+  },
+  buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    borderRadius: 8,
     gap: 8,
   },
   callButton: {

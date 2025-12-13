@@ -134,12 +134,20 @@ export default function FollowUpsScreen() {
 
                   <View style={styles.dateTimeRow}>
                     <View style={styles.dateTimeItem}>
-                      <Calendar size={14} color="#666" />
-                      <Text style={styles.dateTimeText}>{date}</Text>
+                      <View style={styles.dateTimeContent}>
+                        <View style={styles.iconContainer}>
+                          <Calendar size={14} color="#666" />
+                        </View>
+                        <Text style={styles.dateTimeText}>{date}</Text>
+                      </View>
                     </View>
                     <View style={styles.dateTimeItem}>
-                      <Clock size={14} color="#666" />
-                      <Text style={styles.dateTimeText}>{time}</Text>
+                      <View style={styles.dateTimeContent}>
+                        <View style={styles.iconContainer}>
+                          <Clock size={14} color="#666" />
+                        </View>
+                        <Text style={styles.dateTimeText}>{time}</Text>
+                      </View>
                     </View>
                   </View>
 
@@ -259,9 +267,16 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   dateTimeItem: {
+    flex: 1,
+  },
+  dateTimeContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  iconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   dateTimeText: {
     fontSize: 14,
