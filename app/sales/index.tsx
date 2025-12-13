@@ -19,7 +19,27 @@ export default function SalesDashboard() {
 
   useEffect(() => {
     fetchCounts();
-  }, []);
+
+    const subscription = supabase
+      .channel('sales_notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user?.id}`,
+        },
+        () => {
+          fetchUnreadNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [user?.id]);
 
   useFocusEffect(
     useCallback(() => {

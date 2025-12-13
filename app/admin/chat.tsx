@@ -114,6 +114,16 @@ export default function AdminChatScreen() {
       ]);
 
       if (error) throw error;
+
+      await supabase.from('notifications').insert([
+        {
+          user_id: selectedSalesPerson,
+          type: 'message',
+          title: 'New Message from Admin',
+          message: `You have a new message from ${user?.full_name}: ${messageText.trim().substring(0, 50)}${messageText.trim().length > 50 ? '...' : ''}`,
+        },
+      ]);
+
       setMessageText('');
       fetchMessages();
     } catch (err: any) {

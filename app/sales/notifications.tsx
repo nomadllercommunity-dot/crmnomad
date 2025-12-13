@@ -25,7 +25,27 @@ export default function NotificationsScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchNotifications();
-    }, [])
+
+      const subscription = supabase
+        .channel('notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user?.id}`,
+          },
+          () => {
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }, [user?.id])
   );
 
   const fetchNotifications = async () => {

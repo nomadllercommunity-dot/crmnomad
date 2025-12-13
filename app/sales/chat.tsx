@@ -117,6 +117,16 @@ export default function ChatScreen() {
       ]);
 
       if (error) throw error;
+
+      await supabase.from('notifications').insert([
+        {
+          user_id: selectedAdmin,
+          type: 'message',
+          title: 'New Message',
+          message: `You have a new message from ${user?.full_name}: ${messageText.trim().substring(0, 50)}${messageText.trim().length > 50 ? '...' : ''}`,
+        },
+      ]);
+
       setMessageText('');
       fetchMessages();
     } catch (err: any) {

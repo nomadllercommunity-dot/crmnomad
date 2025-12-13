@@ -267,6 +267,15 @@ export default function FollowUpsScreen() {
           .eq('id', currentLead.id);
       }
 
+      const actionTypeLabel = getActionTypeLabel(actionType);
+      await supabase.from('notifications').insert({
+        user_id: currentLead.assigned_by || user?.id,
+        type: 'follow_up',
+        title: 'Follow-up Updated',
+        message: `Follow-up added for ${currentLead.client_name} - ${actionTypeLabel}`,
+        lead_id: currentLead.id,
+      });
+
       // Create reminder if confirmed with advance paid
       if (actionType === 'confirmed_advance_paid' && travelDate && user) {
         const reminderDate = new Date(travelDate);

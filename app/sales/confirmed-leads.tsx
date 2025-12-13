@@ -43,12 +43,33 @@ export default function ConfirmedLeadsScreen() {
 
   const allocateToOperations = async (leadId: string) => {
     try {
+      const lead = leads.find(l => l.id === leadId);
+
       const { error } = await supabase
         .from('leads')
         .update({ status: 'allocated_to_operations', updated_at: new Date().toISOString() })
         .eq('id', leadId);
 
       if (error) throw error;
+
+      if (user && lead) {
+        const { data: adminData } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'admin')
+          .limit(1)
+          .single();
+
+        if (adminData) {
+          await supabase.from('notifications').insert({
+            user_id: adminData.id,
+            type: 'allocation',
+            title: 'Lead Allocated to Operations',
+            message: `${lead.client_name} from ${lead.place} has been allocated to operations by ${user.full_name}`,
+            lead_id: leadId,
+          });
+        }
+      }
 
       Alert.alert('Success', 'Lead allocated to operations');
       fetchLeads();
