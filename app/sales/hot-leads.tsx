@@ -132,12 +132,16 @@ export default function HotLeadsScreen() {
         action_type: actionType,
         follow_up_note: remark.trim(),
         created_at: new Date().toISOString(),
+        follow_up_date: new Date().toISOString().split('T')[0],
       };
 
       // Add conditional fields based on action type
       if (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType)) {
-        followUpData.next_follow_up_date = nextFollowUpDate.toISOString().split('T')[0];
-        followUpData.next_follow_up_time = nextFollowUpTime.toTimeString().split(' ')[0];
+        const dateValue = dateText || nextFollowUpDate.toISOString().split('T')[0];
+        const timeValue = timeText || nextFollowUpTime.toTimeString().split(':').slice(0, 2).join(':');
+
+        followUpData.next_follow_up_date = dateValue;
+        followUpData.next_follow_up_time = timeValue + ':00';
       }
 
       if (actionType === 'confirmed_advance_paid') {
@@ -237,7 +241,9 @@ export default function HotLeadsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#1a1a1a" />
+          <View style={styles.iconContainer}>
+            <ArrowLeft size={24} color="#1a1a1a" />
+          </View>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Hot Leads</Text>
         <View style={{ width: 24 }} />
@@ -261,26 +267,36 @@ export default function HotLeadsScreen() {
               <View style={styles.leadDetails}>
                 {lead.contact_number && (
                   <View style={styles.detailRow}>
-                    <Phone size={16} color="#666" />
+                    <View style={styles.iconContainer}>
+                      <Phone size={16} color="#666" />
+                    </View>
                     <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.contact_number}</Text>
                   </View>
                 )}
                 <View style={styles.detailRow}>
-                  <MapPin size={16} color="#666" />
+                  <View style={styles.iconContainer}>
+                    <MapPin size={16} color="#666" />
+                  </View>
                   <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.place}</Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Users size={16} color="#666" />
+                  <View style={styles.iconContainer}>
+                    <Users size={16} color="#666" />
+                  </View>
                   <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.no_of_pax} Pax</Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Calendar size={16} color="#666" />
+                  <View style={styles.iconContainer}>
+                    <Calendar size={16} color="#666" />
+                  </View>
                   <Text style={[styles.detailText, styles.detailTextWithIcon]}>
                     {lead.travel_date || lead.travel_month || 'Date TBD'}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <DollarSign size={16} color="#666" />
+                  <View style={styles.iconContainer}>
+                    <DollarSign size={16} color="#666" />
+                  </View>
                   <Text style={[styles.detailText, styles.detailTextWithIcon]}>₹{lead.expected_budget}</Text>
                 </View>
               </View>
@@ -298,7 +314,9 @@ export default function HotLeadsScreen() {
                   onPress={() => lead.contact_number && handleCall(lead.contact_number, lead)}
                   disabled={!lead.contact_number}
                 >
-                  <Phone size={20} color="#fff" />
+                  <View style={styles.iconContainer}>
+                    <Phone size={20} color="#fff" />
+                  </View>
                   <Text style={[styles.actionButtonText, styles.actionButtonTextWithIcon]}>Call</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -306,7 +324,9 @@ export default function HotLeadsScreen() {
                   onPress={() => lead.contact_number && handleWhatsApp(lead.contact_number, lead.client_name, lead.place)}
                   disabled={!lead.contact_number}
                 >
-                  <MessageCircle size={20} color="#fff" />
+                  <View style={styles.iconContainer}>
+                    <MessageCircle size={20} color="#fff" />
+                  </View>
                   <Text style={[styles.actionButtonText, styles.actionButtonTextWithIcon]}>WhatsApp</Text>
                 </TouchableOpacity>
               </View>
@@ -326,7 +346,9 @@ export default function HotLeadsScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add Follow-Up</Text>
               <TouchableOpacity onPress={handleCloseModal}>
-                <X size={24} color="#666" />
+                <View style={styles.iconContainer}>
+                  <X size={24} color="#666" />
+                </View>
               </TouchableOpacity>
             </View>
 
@@ -347,7 +369,9 @@ export default function HotLeadsScreen() {
                   <Text style={[styles.pickerButtonText, !actionType && styles.placeholderText]}>
                     {actionType ? actionTypes.find(a => a.value === actionType)?.label : 'Select action type'}
                   </Text>
-                  <ChevronDown size={20} color="#666" />
+                  <View style={styles.iconContainer}>
+                    <ChevronDown size={20} color="#666" />
+                  </View>
                 </TouchableOpacity>
 
                 {showActionPicker && (
@@ -672,6 +696,10 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
+  },
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOverlay: {
     flex: 1,
