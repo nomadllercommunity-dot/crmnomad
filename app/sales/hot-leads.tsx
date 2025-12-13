@@ -19,6 +19,8 @@ export default function HotLeadsScreen() {
   const [remark, setRemark] = useState('');
   const [nextFollowUpDate, setNextFollowUpDate] = useState(new Date());
   const [nextFollowUpTime, setNextFollowUpTime] = useState(new Date());
+  const [dateText, setDateText] = useState('');
+  const [timeText, setTimeText] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [itineraryId, setItineraryId] = useState('');
@@ -194,6 +196,8 @@ export default function HotLeadsScreen() {
     setRemark('');
     setNextFollowUpDate(new Date());
     setNextFollowUpTime(new Date());
+    setDateText('');
+    setTimeText('');
     setItineraryId('');
     setTotalAmount('');
     setAdvanceAmount('');
@@ -201,6 +205,28 @@ export default function HotLeadsScreen() {
     setDeadReason('');
     setCurrentLead(null);
   }
+
+  const handleDateChange = (text: string) => {
+    setDateText(text);
+    const parsed = new Date(text);
+    if (!isNaN(parsed.getTime())) {
+      setNextFollowUpDate(parsed);
+    }
+  };
+
+  const handleTimeChange = (text: string) => {
+    setTimeText(text);
+    const timeMatch = text.match(/^(\d{1,2}):(\d{2})$/);
+    if (timeMatch) {
+      const hours = parseInt(timeMatch[1]);
+      const minutes = parseInt(timeMatch[2]);
+      if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+        const newTime = new Date();
+        newTime.setHours(hours, minutes);
+        setNextFollowUpTime(newTime);
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -349,15 +375,20 @@ export default function HotLeadsScreen() {
                 <>
                   <View style={styles.formGroup}>
                     <Text style={styles.label}>Next Follow-Up Date *</Text>
-                    <TouchableOpacity
-                      style={styles.dateButton}
-                      onPress={() => setShowDatePicker(true)}
-                    >
-                      <Calendar size={18} color="#666" />
-                      <Text style={styles.dateButtonText}>
-                        {nextFollowUpDate.toLocaleDateString()}
-                      </Text>
-                    </TouchableOpacity>
+                    <View style={styles.dateInputContainer}>
+                      <TextInput
+                        style={styles.dateInput}
+                        placeholder="YYYY-MM-DD or tap calendar"
+                        value={dateText || nextFollowUpDate.toISOString().split('T')[0]}
+                        onChangeText={handleDateChange}
+                      />
+                      <TouchableOpacity
+                        style={styles.calendarButton}
+                        onPress={() => setShowDatePicker(true)}
+                      >
+                        <Calendar size={20} color="#3b82f6" />
+                      </TouchableOpacity>
+                    </View>
                     {showDatePicker && (
                       <DateTimePicker
                         value={nextFollowUpDate}
@@ -365,7 +396,10 @@ export default function HotLeadsScreen() {
                         display="default"
                         onChange={(event, date) => {
                           setShowDatePicker(Platform.OS === 'ios');
-                          if (date) setNextFollowUpDate(date);
+                          if (date) {
+                            setNextFollowUpDate(date);
+                            setDateText(date.toISOString().split('T')[0]);
+                          }
                         }}
                       />
                     )}
@@ -373,15 +407,20 @@ export default function HotLeadsScreen() {
 
                   <View style={styles.formGroup}>
                     <Text style={styles.label}>Next Follow-Up Time *</Text>
-                    <TouchableOpacity
-                      style={styles.dateButton}
-                      onPress={() => setShowTimePicker(true)}
-                    >
-                      <Calendar size={18} color="#666" />
-                      <Text style={styles.dateButtonText}>
-                        {nextFollowUpTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </Text>
-                    </TouchableOpacity>
+                    <View style={styles.dateInputContainer}>
+                      <TextInput
+                        style={styles.dateInput}
+                        placeholder="HH:MM (24-hour) or tap clock"
+                        value={timeText || nextFollowUpTime.toTimeString().slice(0, 5)}
+                        onChangeText={handleTimeChange}
+                      />
+                      <TouchableOpacity
+                        style={styles.calendarButton}
+                        onPress={() => setShowTimePicker(true)}
+                      >
+                        <Calendar size={20} color="#3b82f6" />
+                      </TouchableOpacity>
+                    </View>
                     {showTimePicker && (
                       <DateTimePicker
                         value={nextFollowUpTime}
@@ -389,7 +428,10 @@ export default function HotLeadsScreen() {
                         display="default"
                         onChange={(event, time) => {
                           setShowTimePicker(Platform.OS === 'ios');
-                          if (time) setNextFollowUpTime(time);
+                          if (time) {
+                            setNextFollowUpTime(time);
+                            setTimeText(time.toTimeString().slice(0, 5));
+                          }
                         }}
                       />
                     )}
@@ -788,18 +830,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1a1a1a',
   },
-  dateButton: {
+  dateInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  dateInput: {
+    flex: 1,
     borderWidth: 1,
     borderColor: '#e5e5e5',
     borderRadius: 8,
     padding: 12,
-  },
-  dateButtonText: {
     fontSize: 16,
     color: '#1a1a1a',
+  },
+  calendarButton: {
+    width: 44,
+    height: 44,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0f9ff',
   },
   dueAmountContainer: {
     flexDirection: 'row',
