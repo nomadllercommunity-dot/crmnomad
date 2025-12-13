@@ -16,27 +16,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUser().catch(err => {
-      console.error('Failed to load user on mount:', err);
-    });
+    console.log('AuthProvider: Starting to load user...');
+    loadUser()
+      .then(() => console.log('AuthProvider: User loaded successfully'))
+      .catch(err => {
+        console.error('Failed to load user on mount:', err);
+      });
   }, []);
 
   const loadUser = async () => {
     try {
+      console.log('AuthProvider: Getting user from AsyncStorage...');
       const userData = await AsyncStorage.getItem('user');
+      console.log('AuthProvider: Got user data:', userData ? 'exists' : 'null');
       if (userData) {
         const parsed = JSON.parse(userData);
+        console.log('AuthProvider: Parsed user:', parsed);
         setUser(parsed);
       }
     } catch (error) {
       console.error('Error loading user:', error);
-      // Clear corrupted data if any
       try {
         await AsyncStorage.removeItem('user');
       } catch (e) {
         console.error('Error clearing corrupted user data:', e);
       }
     } finally {
+      console.log('AuthProvider: Setting isLoading to false');
       setIsLoading(false);
     }
   };
@@ -60,10 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw error;
     }
   };
-
-  if (isLoading) {
-    return null;
-  }
 
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout }}>
