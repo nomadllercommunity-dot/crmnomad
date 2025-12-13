@@ -15,13 +15,17 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (user) {
-      if (user.role === 'admin') {
-        router.replace('/admin');
-      } else {
-        router.replace('/sales');
+      try {
+        if (user.role === 'admin') {
+          router.replace('/admin');
+        } else {
+          router.replace('/sales');
+        }
+      } catch (error) {
+        console.error('Navigation error:', error);
       }
     }
-  }, [user]);
+  }, [user, router]);
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {

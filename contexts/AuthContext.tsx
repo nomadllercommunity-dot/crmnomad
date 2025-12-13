@@ -16,7 +16,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUser();
+    loadUser().catch(err => {
+      console.error('Failed to load user on mount:', err);
+    });
   }, []);
 
   const loadUser = async () => {
