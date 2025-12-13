@@ -61,7 +61,14 @@ export default function OperationsScreen() {
           </View>
         ) : (
           leads.map((lead) => (
-            <View key={lead.id} style={styles.leadCard}>
+            <TouchableOpacity
+              key={lead.id}
+              style={styles.leadCard}
+              onPress={() => router.push({
+                pathname: '/sales/lead-detail',
+                params: { leadId: lead.id, fromOperations: 'true' }
+              })}
+            >
               <View style={styles.leadHeader}>
                 <Text style={styles.leadName}>{lead.client_name}</Text>
                 <View style={styles.operationsBadge}>
@@ -86,7 +93,7 @@ export default function OperationsScreen() {
                   </Text>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>

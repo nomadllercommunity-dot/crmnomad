@@ -1,9 +1,9 @@
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ListTodo, Clock, Flame, CheckCircle, Briefcase, LogOut, MessageCircle } from 'lucide-react-native';
+import { ListTodo, Clock, Flame, CheckCircle, Briefcase, LogOut, MessageCircle, Bell } from 'lucide-react-native';
 
 export default function SalesDashboard() {
   const { user, logout } = useAuth();
@@ -15,10 +15,17 @@ export default function SalesDashboard() {
     confirmed: 0,
     operations: 0,
   });
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     fetchCounts();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnreadNotifications();
+    }, [])
+  );
 
   const fetchCounts = async () => {
     try {
@@ -61,6 +68,20 @@ export default function SalesDashboard() {
       });
     } catch (err: any) {
       console.error('Error fetching counts:', err);
+    }
+  };
+
+  const fetchUnreadNotifications = async () => {
+    try {
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user?.id)
+        .eq('is_read', false);
+
+      setUnreadNotifications(count || 0);
+    } catch (err: any) {
+      console.error('Error fetching unread notifications:', err);
     }
   };
 
@@ -115,6 +136,16 @@ export default function SalesDashboard() {
           <Text style={styles.headerSubtitle}>Welcome, {user?.full_name}</Text>
         </View>
         <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => router.push('/sales/notifications')} style={styles.notificationButton}>
+            <Bell size={24} color="#8b5cf6" />
+            {unreadNotifications > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/sales/chat')} style={styles.chatButton}>
             <MessageCircle size={24} color="#3b82f6" />
           </TouchableOpacity>
@@ -173,6 +204,27 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     gap: 8,
+    alignItems: 'center',
+  },
+  notificationButton: {
+    padding: 8,
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   chatButton: {
     padding: 8,

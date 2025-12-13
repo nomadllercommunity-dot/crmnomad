@@ -94,7 +94,7 @@ export default function AssignLeadScreen() {
     setError('');
 
     try {
-      const { error } = await supabase.from('leads').insert([
+      const { data: leadData, error: leadError } = await supabase.from('leads').insert([
         {
           lead_type: formData.leadType,
           client_name: formData.clientName,
@@ -110,9 +110,24 @@ export default function AssignLeadScreen() {
           assigned_by: user?.id,
           status: formData.leadType === 'hot' ? 'hot' : 'allocated',
         },
-      ]);
+      ]).select();
 
-      if (error) throw error;
+      if (leadError) throw leadError;
+
+      if (leadData && leadData.length > 0) {
+        const leadId = leadData[0].id;
+        const assignedSalesPerson = salesPersons.find(sp => sp.id === formData.assignedTo);
+
+        await supabase.from('notifications').insert([
+          {
+            user_id: formData.assignedTo,
+            type: 'lead_assigned',
+            title: 'New Lead Assigned',
+            message: `${formData.clientName} from ${formData.place} has been assigned to you. ${formData.noOfPax} Pax, Budget: ₹${formData.expectedBudget}`,
+            lead_id: leadId,
+          },
+        ]);
+      }
 
       Alert.alert('Success', 'Lead assigned successfully');
       router.back();
