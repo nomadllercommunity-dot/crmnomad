@@ -71,6 +71,30 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface Reminder {
+  id: string;
+  lead_id: string;
+  sales_person_id: string;
+  travel_date: string;
+  reminder_date: string;
+  reminder_time: string;
+  calendar_event_id: string | null;
+  status: 'pending' | 'triggered' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string;
+  lead_id: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
 export interface LeadWithSalesPerson extends Lead {
   sales_person?: User;
 }

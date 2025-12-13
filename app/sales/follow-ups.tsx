@@ -1,10 +1,12 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Linking, Modal, TextInput, AppState, AppStateStatus } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Linking, Modal, TextInput, AppState, AppStateStatus, Alert } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Lead } from '@/types';
 import { ArrowLeft, Calendar, Clock, Phone, MessageCircle, X, ChevronDown, Plus, History } from 'lucide-react-native';
+import DateTimePickerComponent from '@/components/DateTimePicker';
+import { calendarService } from '@/services/calendar';
 
 interface FollowUpWithLead {
   id: string;
@@ -57,6 +59,8 @@ export default function FollowUpsScreen() {
   const [transactionId, setTransactionId] = useState('');
   const [deadReason, setDeadReason] = useState('');
   const [showDeadReasonPicker, setShowDeadReasonPicker] = useState(false);
+  const [travelDate, setTravelDate] = useState<Date | null>(null);
+  const [reminderTime, setReminderTime] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
   const appState = useRef(AppState.currentState);
   const callInitiatedRef = useRef(false);
@@ -204,6 +208,11 @@ export default function FollowUpsScreen() {
   async function handleSaveFollowUp() {
     if (!currentLead || !actionType || !remark.trim()) return;
 
+    if (actionType === 'confirmed_advance_paid' && !travelDate) {
+      Alert.alert('Error', 'Please select a travel date');
+      return;
+    }
+
     setSaving(true);
     try {
       const followUpData: any = {
@@ -211,8 +220,8 @@ export default function FollowUpsScreen() {
         sales_person_id: user?.id,
         action_type: actionType,
         follow_up_note: remark.trim(),
-        created_at: new Date().toISOString(),
-        follow_up_date: new Date().toISOString().split('T')[0],
+        follow_up_date: new Date().toISOString(),
+        status: 'completed',
       };
 
       if (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType)) {
@@ -223,7 +232,7 @@ export default function FollowUpsScreen() {
         followUpData.next_follow_up_time = timeValue + ':00';
       }
 
-      if (actionType === 'confirmed_advance_paid') {
+      if (actionType === 'confirmed_advance_paid' && travelDate) {
         followUpData.itinerary_id = itineraryId;
         followUpData.total_amount = parseFloat(totalAmount);
         followUpData.advance_amount = parseFloat(advanceAmount);
@@ -232,7 +241,7 @@ export default function FollowUpsScreen() {
 
         await supabase
           .from('leads')
-          .update({ status: 'confirmed' })
+          .update({ status: 'confirmed', travel_date: travelDate.toISOString().split('T')[0] })
           .eq('id', currentLead.id);
       }
 
@@ -258,10 +267,56 @@ export default function FollowUpsScreen() {
           .eq('id', currentLead.id);
       }
 
+      // Create reminder if confirmed with advance paid
+      if (actionType === 'confirmed_advance_paid' && travelDate && user) {
+        const reminderDate = new Date(travelDate);
+        reminderDate.setDate(reminderDate.getDate() - 7);
+
+        const reminderTimeObj = reminderTime || new Date();
+
+        try {
+          const calendarTitle = `Travel Reminder: ${currentLead.client_name}`;
+          const calendarDescription = `Client: ${currentLead.client_name}
+Location: ${currentLead.place}
+Pax: ${currentLead.no_of_pax}
+Travel Date: ${travelDate.toISOString().split('T')[0]}
+
+This is a 7-day advance reminder for the travel date.`;
+
+          const calendarEventDate = new Date(reminderDate);
+          calendarEventDate.setHours(reminderTimeObj.getHours());
+          calendarEventDate.setMinutes(reminderTimeObj.getMinutes());
+
+          const calendarEventId = await calendarService.createReminder(
+            {
+              title: calendarTitle,
+              description: calendarDescription,
+              startDate: calendarEventDate,
+            },
+            currentLead.id,
+            currentLead.client_name
+          );
+
+          await supabase.from('reminders').insert({
+            lead_id: currentLead.id,
+            sales_person_id: user.id,
+            travel_date: travelDate.toISOString().split('T')[0],
+            reminder_date: reminderDate.toISOString().split('T')[0],
+            reminder_time: reminderTime?.toTimeString().slice(0, 5) || '09:00',
+            calendar_event_id: calendarEventId,
+            status: 'pending',
+          });
+        } catch (reminderError) {
+          console.error('Error creating reminder:', reminderError);
+          // Don't fail the entire operation if reminder fails
+        }
+      }
+
       handleCloseModal();
       fetchFollowUps();
     } catch (err: any) {
       console.error('Error saving follow-up:', err);
+      Alert.alert('Error', err.message || 'Failed to save follow-up');
     } finally {
       setSaving(false);
     }
@@ -280,6 +335,8 @@ export default function FollowUpsScreen() {
     setAdvanceAmount('');
     setTransactionId('');
     setDeadReason('');
+    setTravelDate(null);
+    setReminderTime(null);
     setCurrentLead(null);
   }
 
@@ -642,6 +699,26 @@ export default function FollowUpsScreen() {
               {actionType === 'confirmed_advance_paid' && (
                 <>
                   <View style={styles.formGroup}>
+                    <Text style={styles.label}>Travel Date *</Text>
+                    <DateTimePickerComponent
+                      value={travelDate}
+                      onChange={setTravelDate}
+                      mode="date"
+                      placeholder="Select travel date"
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Reminder Time (7 days before)</Text>
+                    <DateTimePickerComponent
+                      value={reminderTime}
+                      onChange={setReminderTime}
+                      mode="time"
+                      placeholder="Select reminder time"
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
                     <Text style={styles.label}>Itinerary ID *</Text>
                     <TextInput
                       style={styles.input}
@@ -756,7 +833,7 @@ export default function FollowUpsScreen() {
                   (saving || !actionType || !remark.trim() ||
                     (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!dateText && !nextFollowUpDate)) ||
                     (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!timeText && !nextFollowUpTime)) ||
-                    (actionType === 'confirmed_advance_paid' && (!itineraryId || !totalAmount || !advanceAmount || !transactionId)) ||
+                    (actionType === 'confirmed_advance_paid' && (!travelDate || !itineraryId || !totalAmount || !advanceAmount || !transactionId)) ||
                     (actionType === 'dead' && !deadReason)
                   ) && styles.disabledButton
                 ]}
@@ -765,7 +842,7 @@ export default function FollowUpsScreen() {
                   saving || !actionType || !remark.trim() ||
                   (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!dateText && !nextFollowUpDate)) ||
                   (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!timeText && !nextFollowUpTime)) ||
-                  (actionType === 'confirmed_advance_paid' && (!itineraryId || !totalAmount || !advanceAmount || !transactionId)) ||
+                  (actionType === 'confirmed_advance_paid' && (!travelDate || !itineraryId || !totalAmount || !advanceAmount || !transactionId)) ||
                   (actionType === 'dead' && !deadReason)
                 }
               >

@@ -1,16 +1,23 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, Modal } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Lead } from '@/types';
-import { ArrowLeft, MapPin, Users, Calendar, CheckCircle } from 'lucide-react-native';
+import { Lead, Reminder } from '@/types';
+import { ArrowLeft, MapPin, Users, Calendar, CheckCircle, Bell, X } from 'lucide-react-native';
+import DateTimePickerComponent from '@/components/DateTimePicker';
+import { calendarService } from '@/services/calendar';
 
 export default function ConfirmedLeadsScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [reminderModal, setReminderModal] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [travelDate, setTravelDate] = useState<Date | null>(null);
+  const [reminderTime, setReminderTime] = useState<Date | null>(null);
+  const [savingReminder, setSavingReminder] = useState(false);
 
   useEffect(() => {
     fetchLeads();
@@ -47,6 +54,82 @@ export default function ConfirmedLeadsScreen() {
       fetchLeads();
     } catch (err: any) {
       Alert.alert('Error', err.message);
+    }
+  };
+
+  const openReminderModal = (lead: Lead) => {
+    setSelectedLead(lead);
+    setTravelDate(lead.travel_date ? new Date(lead.travel_date) : null);
+    setReminderTime(new Date());
+    setReminderTime((prev) => {
+      const d = prev || new Date();
+      d.setHours(9, 0, 0, 0);
+      return d;
+    });
+    setReminderModal(true);
+  };
+
+  const calculateReminderDate = (date: Date): Date => {
+    const reminderDate = new Date(date);
+    reminderDate.setDate(reminderDate.getDate() - 7);
+    return reminderDate;
+  };
+
+  const saveReminder = async () => {
+    if (!selectedLead || !travelDate || !user) {
+      Alert.alert('Error', 'Please select a travel date');
+      return;
+    }
+
+    setSavingReminder(true);
+    try {
+      const reminderDate = calculateReminderDate(travelDate);
+      const reminderTimeObj = reminderTime || new Date();
+
+      const calendarTitle = `Travel Reminder: ${selectedLead.client_name}`;
+      const calendarDescription = `Client: ${selectedLead.client_name}
+Location: ${selectedLead.place}
+Pax: ${selectedLead.no_of_pax}
+Travel Date: ${travelDate.toISOString().split('T')[0]}
+
+This is a 7-day advance reminder for the travel date.`;
+
+      const calendarEventDate = new Date(reminderDate);
+      calendarEventDate.setHours(reminderTimeObj.getHours());
+      calendarEventDate.setMinutes(reminderTimeObj.getMinutes());
+
+      const calendarEventId = await calendarService.createReminder(
+        {
+          title: calendarTitle,
+          description: calendarDescription,
+          startDate: calendarEventDate,
+        },
+        selectedLead.id,
+        selectedLead.client_name
+      );
+
+      const { error } = await supabase.from('reminders').insert({
+        lead_id: selectedLead.id,
+        sales_person_id: user.id,
+        travel_date: travelDate.toISOString().split('T')[0],
+        reminder_date: reminderDate.toISOString().split('T')[0],
+        reminder_time: reminderTime?.toTimeString().slice(0, 5) || '09:00',
+        calendar_event_id: calendarEventId,
+        status: 'pending',
+      });
+
+      if (error) throw error;
+
+      Alert.alert('Success', 'Reminder added to calendar');
+      setReminderModal(false);
+      setSelectedLead(null);
+      setTravelDate(null);
+      setReminderTime(null);
+    } catch (err: any) {
+      console.error('Reminder save error:', err);
+      Alert.alert('Error', err.message || 'Failed to save reminder');
+    } finally {
+      setSavingReminder(false);
     }
   };
 
@@ -119,16 +202,83 @@ export default function ConfirmedLeadsScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity
-                style={styles.allocateButton}
-                onPress={() => allocateToOperations(lead.id)}
-              >
-                <Text style={styles.allocateButtonText}>Allocate to Operations</Text>
-              </TouchableOpacity>
+              <View style={styles.buttonGroup}>
+                <TouchableOpacity
+                  style={styles.reminderButton}
+                  onPress={() => openReminderModal(lead)}
+                >
+                  <Bell size={18} color="#fff" />
+                  <Text style={styles.reminderButtonText}>Add Reminder</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.allocateButton}
+                  onPress={() => allocateToOperations(lead.id)}
+                >
+                  <Text style={styles.allocateButtonText}>Allocate</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))
         )}
       </ScrollView>
+
+      <Modal visible={reminderModal} transparent animationType="slide" onRequestClose={() => setReminderModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Set Travel Reminder</Text>
+              <TouchableOpacity onPress={() => setReminderModal(false)}>
+                <X size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedLead && (
+              <ScrollView style={styles.modalBody}>
+                <View style={styles.clientInfo}>
+                  <Text style={styles.clientName}>{selectedLead.client_name}</Text>
+                  <Text style={styles.clientDetail}>{selectedLead.place} • {selectedLead.no_of_pax} Pax</Text>
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Travel Date</Text>
+                  <DateTimePickerComponent
+                    value={travelDate}
+                    onChange={setTravelDate}
+                    mode="date"
+                    placeholder="Select travel date"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Reminder Time (7 days before)</Text>
+                  <DateTimePickerComponent
+                    value={reminderTime}
+                    onChange={setReminderTime}
+                    mode="time"
+                    placeholder="Select reminder time"
+                  />
+                </View>
+
+                {travelDate && (
+                  <View style={styles.reminderInfo}>
+                    <Text style={styles.reminderInfoText}>
+                      Reminder will be set for: {calculateReminderDate(travelDate).toISOString().split('T')[0]}
+                    </Text>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.saveButton, savingReminder && styles.saveButtonDisabled]}
+                  onPress={saveReminder}
+                  disabled={savingReminder}
+                >
+                  <Text style={styles.saveButtonText}>{savingReminder ? 'Saving...' : 'Save Reminder'}</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -235,13 +385,115 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  buttonGroup: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  reminderButton: {
+    flex: 1,
+    backgroundColor: '#3b82f6',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  reminderButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   allocateButton: {
+    flex: 1,
     backgroundColor: '#8b5cf6',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   allocateButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: '90%',
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalBody: {
+    padding: 16,
+  },
+  clientInfo: {
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+  },
+  clientName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  clientDetail: {
+    fontSize: 14,
+    color: '#666',
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  reminderInfo: {
+    backgroundColor: '#f0f4ff',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  reminderInfoText: {
+    fontSize: 13,
+    color: '#3b82f6',
+    fontWeight: '500',
+  },
+  saveButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  saveButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
