@@ -10,11 +10,11 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { user, login } = useAuth();
+  const { user, isLoading, login } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (user) {
+    if (user && !isLoading) {
       try {
         if (user.role === 'admin') {
           router.replace('/admin');
@@ -25,7 +25,15 @@ export default function LoginScreen() {
         console.error('Navigation error:', error);
       }
     }
-  }, [user, router]);
+  }, [user, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {

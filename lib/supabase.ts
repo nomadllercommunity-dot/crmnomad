@@ -12,12 +12,20 @@ const supabaseAnonKey =
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
   '';
 
+console.log('Supabase URL:', supabaseUrl ? 'Found' : 'Missing');
+console.log('Supabase Key:', supabaseAnonKey ? 'Found' : 'Missing');
+
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase credentials. Please check your app.json configuration.');
+  console.error('Missing Supabase credentials!');
+  console.error('Constants.expoConfig:', Constants.expoConfig);
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false,
-  },
-});
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      persistSession: false,
+    },
+  }
+);
