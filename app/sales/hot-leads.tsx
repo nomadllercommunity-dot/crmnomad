@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Lead } from '@/types';
-import { ArrowLeft, Phone, MessageCircle, MapPin, Users, DollarSign, Calendar, X, ChevronDown } from 'lucide-react-native';
+import { ArrowLeft, Phone, MessageCircle, MapPin, Users, DollarSign, Calendar, X, ChevronDown, Clock } from 'lucide-react-native';
 
 export default function HotLeadsScreen() {
   const { user } = useAuth();
@@ -378,18 +378,20 @@ export default function HotLeadsScreen() {
                     <View style={styles.dateInputContainer}>
                       <TextInput
                         style={styles.dateInput}
-                        placeholder="YYYY-MM-DD or tap calendar"
+                        placeholder="YYYY-MM-DD"
                         value={dateText || nextFollowUpDate.toISOString().split('T')[0]}
                         onChangeText={handleDateChange}
                       />
-                      <TouchableOpacity
-                        style={styles.calendarButton}
-                        onPress={() => setShowDatePicker(true)}
-                      >
-                        <Calendar size={20} color="#3b82f6" />
-                      </TouchableOpacity>
+                      {Platform.OS !== 'web' && (
+                        <TouchableOpacity
+                          style={styles.calendarButton}
+                          onPress={() => setShowDatePicker(true)}
+                        >
+                          <Calendar size={20} color="#3b82f6" />
+                        </TouchableOpacity>
+                      )}
                     </View>
-                    {showDatePicker && (
+                    {showDatePicker && Platform.OS !== 'web' && (
                       <DateTimePicker
                         value={nextFollowUpDate}
                         mode="date"
@@ -410,18 +412,20 @@ export default function HotLeadsScreen() {
                     <View style={styles.dateInputContainer}>
                       <TextInput
                         style={styles.dateInput}
-                        placeholder="HH:MM (24-hour) or tap clock"
+                        placeholder="HH:MM (24-hour)"
                         value={timeText || nextFollowUpTime.toTimeString().slice(0, 5)}
                         onChangeText={handleTimeChange}
                       />
-                      <TouchableOpacity
-                        style={styles.calendarButton}
-                        onPress={() => setShowTimePicker(true)}
-                      >
-                        <Calendar size={20} color="#3b82f6" />
-                      </TouchableOpacity>
+                      {Platform.OS !== 'web' && (
+                        <TouchableOpacity
+                          style={styles.calendarButton}
+                          onPress={() => setShowTimePicker(true)}
+                        >
+                          <Clock size={20} color="#3b82f6" />
+                        </TouchableOpacity>
+                      )}
                     </View>
-                    {showTimePicker && (
+                    {showTimePicker && Platform.OS !== 'web' && (
                       <DateTimePicker
                         value={nextFollowUpTime}
                         mode="time"
