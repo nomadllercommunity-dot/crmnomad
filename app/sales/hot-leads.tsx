@@ -1,6 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Linking, Modal, TextInput, AppState, AppStateStatus, Platform } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -21,8 +20,6 @@ export default function HotLeadsScreen() {
   const [nextFollowUpTime, setNextFollowUpTime] = useState(new Date());
   const [dateText, setDateText] = useState('');
   const [timeText, setTimeText] = useState('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [itineraryId, setItineraryId] = useState('');
   const [totalAmount, setTotalAmount] = useState('');
   const [advanceAmount, setAdvanceAmount] = useState('');
@@ -265,26 +262,26 @@ export default function HotLeadsScreen() {
                 {lead.contact_number && (
                   <View style={styles.detailRow}>
                     <Phone size={16} color="#666" />
-                    <Text style={styles.detailText}>{lead.contact_number}</Text>
+                    <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.contact_number}</Text>
                   </View>
                 )}
                 <View style={styles.detailRow}>
                   <MapPin size={16} color="#666" />
-                  <Text style={styles.detailText}>{lead.place}</Text>
+                  <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.place}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Users size={16} color="#666" />
-                  <Text style={styles.detailText}>{lead.no_of_pax} Pax</Text>
+                  <Text style={[styles.detailText, styles.detailTextWithIcon]}>{lead.no_of_pax} Pax</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Calendar size={16} color="#666" />
-                  <Text style={styles.detailText}>
+                  <Text style={[styles.detailText, styles.detailTextWithIcon]}>
                     {lead.travel_date || lead.travel_month || 'Date TBD'}
                   </Text>
                 </View>
                 <View style={styles.detailRow}>
                   <DollarSign size={16} color="#666" />
-                  <Text style={styles.detailText}>₹{lead.expected_budget}</Text>
+                  <Text style={[styles.detailText, styles.detailTextWithIcon]}>₹{lead.expected_budget}</Text>
                 </View>
               </View>
 
@@ -302,7 +299,7 @@ export default function HotLeadsScreen() {
                   disabled={!lead.contact_number}
                 >
                   <Phone size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>Call</Text>
+                  <Text style={[styles.actionButtonText, styles.actionButtonTextWithIcon]}>Call</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.actionButton, styles.whatsappButton, !lead.contact_number && styles.disabledButton]}
@@ -310,7 +307,7 @@ export default function HotLeadsScreen() {
                   disabled={!lead.contact_number}
                 >
                   <MessageCircle size={20} color="#fff" />
-                  <Text style={styles.actionButtonText}>WhatsApp</Text>
+                  <Text style={[styles.actionButtonText, styles.actionButtonTextWithIcon]}>WhatsApp</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -375,70 +372,22 @@ export default function HotLeadsScreen() {
                 <>
                   <View style={styles.formGroup}>
                     <Text style={styles.label}>Next Follow-Up Date *</Text>
-                    <View style={styles.dateInputContainer}>
-                      <TextInput
-                        style={styles.dateInput}
-                        placeholder="YYYY-MM-DD"
-                        value={dateText || nextFollowUpDate.toISOString().split('T')[0]}
-                        onChangeText={handleDateChange}
-                      />
-                      {Platform.OS !== 'web' && (
-                        <TouchableOpacity
-                          style={styles.calendarButton}
-                          onPress={() => setShowDatePicker(true)}
-                        >
-                          <Calendar size={20} color="#3b82f6" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    {showDatePicker && Platform.OS !== 'web' && (
-                      <DateTimePicker
-                        value={nextFollowUpDate}
-                        mode="date"
-                        display="default"
-                        onChange={(event, date) => {
-                          setShowDatePicker(Platform.OS === 'ios');
-                          if (date) {
-                            setNextFollowUpDate(date);
-                            setDateText(date.toISOString().split('T')[0]);
-                          }
-                        }}
-                      />
-                    )}
+                    <TextInput
+                      style={styles.input}
+                      placeholder="YYYY-MM-DD"
+                      value={dateText || nextFollowUpDate.toISOString().split('T')[0]}
+                      onChangeText={handleDateChange}
+                    />
                   </View>
 
                   <View style={styles.formGroup}>
                     <Text style={styles.label}>Next Follow-Up Time *</Text>
-                    <View style={styles.dateInputContainer}>
-                      <TextInput
-                        style={styles.dateInput}
-                        placeholder="HH:MM (24-hour)"
-                        value={timeText || nextFollowUpTime.toTimeString().slice(0, 5)}
-                        onChangeText={handleTimeChange}
-                      />
-                      {Platform.OS !== 'web' && (
-                        <TouchableOpacity
-                          style={styles.calendarButton}
-                          onPress={() => setShowTimePicker(true)}
-                        >
-                          <Clock size={20} color="#3b82f6" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    {showTimePicker && Platform.OS !== 'web' && (
-                      <DateTimePicker
-                        value={nextFollowUpTime}
-                        mode="time"
-                        display="default"
-                        onChange={(event, time) => {
-                          setShowTimePicker(Platform.OS === 'ios');
-                          if (time) {
-                            setNextFollowUpTime(time);
-                            setTimeText(time.toTimeString().slice(0, 5));
-                          }
-                        }}
-                      />
-                    )}
+                    <TextInput
+                      style={styles.input}
+                      placeholder="HH:MM (24-hour)"
+                      value={timeText || nextFollowUpTime.toTimeString().slice(0, 5)}
+                      onChangeText={handleTimeChange}
+                    />
                   </View>
                 </>
               )}
@@ -552,9 +501,24 @@ export default function HotLeadsScreen() {
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
+                style={[
+                  styles.modalButton,
+                  styles.saveButton,
+                  (saving || !actionType || !remark.trim() ||
+                    (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!dateText && !nextFollowUpDate)) ||
+                    (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!timeText && !nextFollowUpTime)) ||
+                    (actionType === 'confirmed_advance_paid' && (!itineraryId || !totalAmount || !advanceAmount || !transactionId)) ||
+                    (actionType === 'dead' && !deadReason)
+                  ) && styles.disabledButton
+                ]}
                 onPress={handleSaveFollowUp}
-                disabled={saving || !actionType || !remark.trim()}
+                disabled={
+                  saving || !actionType || !remark.trim() ||
+                  (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!dateText && !nextFollowUpDate)) ||
+                  (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (!timeText && !nextFollowUpTime)) ||
+                  (actionType === 'confirmed_advance_paid' && (!itineraryId || !totalAmount || !advanceAmount || !transactionId)) ||
+                  (actionType === 'dead' && !deadReason)
+                }
               >
                 {saving ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -650,17 +614,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   leadDetails: {
-    gap: 8,
     marginBottom: 12,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    marginBottom: 8,
   },
   detailText: {
     fontSize: 14,
     color: '#666',
+  },
+  detailTextWithIcon: {
+    marginLeft: 8,
   },
   remarkContainer: {
     backgroundColor: '#fef2f2',
@@ -680,7 +646,6 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: 12,
   },
   actionButton: {
     flex: 1,
@@ -689,7 +654,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 12,
     borderRadius: 8,
-    gap: 8,
+    marginRight: 12,
   },
   callButton: {
     backgroundColor: '#3b82f6',
@@ -701,6 +666,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  actionButtonTextWithIcon: {
+    marginLeft: 8,
   },
   disabledButton: {
     opacity: 0.5,
@@ -748,7 +716,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   label: {
     fontSize: 14,
@@ -775,7 +743,6 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 12,
     marginTop: 20,
   },
   modalButton: {
@@ -784,6 +751,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
   cancelButton: {
     backgroundColor: '#f5f5f5',
@@ -833,30 +801,6 @@ const styles = StyleSheet.create({
   pickerOptionText: {
     fontSize: 16,
     color: '#1a1a1a',
-  },
-  dateInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dateInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#1a1a1a',
-  },
-  calendarButton: {
-    width: 44,
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#3b82f6',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f0f9ff',
   },
   dueAmountContainer: {
     flexDirection: 'row',
