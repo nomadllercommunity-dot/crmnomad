@@ -14,6 +14,7 @@ export interface Lead {
   id: string;
   lead_type: 'normal' | 'urgent' | 'hot';
   client_name: string;
+  contact_number: string | null;
   no_of_pax: number;
   place: string;
   travel_date: string | null;

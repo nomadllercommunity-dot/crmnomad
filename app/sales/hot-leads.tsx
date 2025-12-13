@@ -35,18 +35,20 @@ export default function HotLeadsScreen() {
     }
   };
 
-  const handleCall = (lead: Lead) => {
-    router.push({
-      pathname: '/sales/lead-action',
-      params: { leadId: lead.id },
+  const handleCall = (phoneNumber: string) => {
+    const url = `tel:${phoneNumber}`;
+    Linking.openURL(url).catch((err) => {
+      console.error('Error opening dialer:', err);
     });
   };
 
-  const handleWhatsApp = (lead: Lead) => {
-    const message = `Hello ${lead.client_name}, I'm reaching out regarding your travel inquiry for ${lead.place}.`;
-    const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
-    Linking.openURL(url).catch(() => {
-      Linking.openURL(`https://wa.me/?text=${encodeURIComponent(message)}`);
+  const handleWhatsApp = (phoneNumber: string, clientName: string, place: string) => {
+    // Remove any spaces, dashes, or special characters from phone number
+    const cleanNumber = phoneNumber.replace(/[^\d+]/g, '');
+    const message = `Hello ${clientName}, I'm reaching out regarding your travel inquiry for ${place}.`;
+    const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
+    Linking.openURL(url).catch((err) => {
+      console.error('Error opening WhatsApp:', err);
     });
   };
 
@@ -84,6 +86,12 @@ export default function HotLeadsScreen() {
               </View>
 
               <View style={styles.leadDetails}>
+                {lead.contact_number && (
+                  <View style={styles.detailRow}>
+                    <Phone size={16} color="#666" />
+                    <Text style={styles.detailText}>{lead.contact_number}</Text>
+                  </View>
+                )}
                 <View style={styles.detailRow}>
                   <MapPin size={16} color="#666" />
                   <Text style={styles.detailText}>{lead.place}</Text>
@@ -113,15 +121,17 @@ export default function HotLeadsScreen() {
 
               <View style={styles.actionButtons}>
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.callButton]}
-                  onPress={() => handleCall(lead)}
+                  style={[styles.actionButton, styles.callButton, !lead.contact_number && styles.disabledButton]}
+                  onPress={() => lead.contact_number && handleCall(lead.contact_number)}
+                  disabled={!lead.contact_number}
                 >
                   <Phone size={20} color="#fff" />
                   <Text style={styles.actionButtonText}>Call</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.whatsappButton]}
-                  onPress={() => handleWhatsApp(lead)}
+                  style={[styles.actionButton, styles.whatsappButton, !lead.contact_number && styles.disabledButton]}
+                  onPress={() => lead.contact_number && handleWhatsApp(lead.contact_number, lead.client_name, lead.place)}
+                  disabled={!lead.contact_number}
                 >
                   <MessageCircle size={20} color="#fff" />
                   <Text style={styles.actionButtonText}>WhatsApp</Text>
@@ -266,5 +276,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });
