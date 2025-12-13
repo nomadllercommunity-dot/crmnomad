@@ -62,9 +62,11 @@ export default function LeadActionScreen() {
   };
 
   const startCall = () => {
-    setCallStartTime(new Date());
-    setCallInProgress(true);
-    Linking.openURL(`tel:`);
+    if (lead?.contact_number) {
+      setCallStartTime(new Date());
+      setCallInProgress(true);
+      Linking.openURL(`tel:${lead.contact_number}`);
+    }
   };
 
   const endCall = async () => {
@@ -188,13 +190,18 @@ export default function LeadActionScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.callButton, callInProgress && styles.callButtonActive]}
+          style={[styles.callButton, callInProgress && styles.callButtonActive, !lead?.contact_number && styles.callButtonDisabled]}
           onPress={callInProgress ? endCall : startCall}
+          disabled={!lead?.contact_number && !callInProgress}
         >
-          <Phone size={24} color="#fff" />
-          <Text style={styles.callButtonText}>
-            {callInProgress ? 'End Call' : 'Start Call'}
-          </Text>
+          <View style={styles.callButtonContent}>
+            <View style={styles.iconContainer}>
+              <Phone size={24} color="#fff" />
+            </View>
+            <Text style={styles.callButtonText}>
+              {callInProgress ? 'End Call' : 'Start Call'}
+            </Text>
+          </View>
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Update Follow-Up</Text>
@@ -285,7 +292,7 @@ export default function LeadActionScreen() {
               <View key={item.id} style={styles.historyCard}>
                 <View style={styles.historyHeader}>
                   <Text style={styles.historyType}>
-                    {item.update_type.replace(/_/g, ' ').toUpperCase()}
+                    {item.update_type ? item.update_type.replace(/_/g, ' ').toUpperCase() : 'FOLLOW UP'}
                   </Text>
                   <Text style={styles.historyStatus}>{item.status}</Text>
                 </View>
@@ -358,16 +365,26 @@ const styles = StyleSheet.create({
   },
   callButton: {
     backgroundColor: '#3b82f6',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     padding: 16,
     borderRadius: 12,
     marginBottom: 24,
+  },
+  callButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
   },
   callButtonActive: {
     backgroundColor: '#ef4444',
+  },
+  callButtonDisabled: {
+    backgroundColor: '#93c5fd',
+    opacity: 0.6,
+  },
+  iconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   callButtonText: {
     color: '#fff',
