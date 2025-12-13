@@ -4,6 +4,7 @@
     "slug": "telecom-crm",
     "version": "1.0.0",
     "orientation": "portrait",
+    "owner": "tripingmania",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
