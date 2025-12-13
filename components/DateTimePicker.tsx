@@ -165,7 +165,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingVertical: 4,
     border: 'none',
-    outline: 'none',
     backgroundColor: 'transparent',
     color: '#333',
   } as any,
