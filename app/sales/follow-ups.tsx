@@ -439,10 +439,9 @@ This is a 7-day advance reminder for the travel date.`;
           followUps.map((followUp) => {
             const { date, time } = formatDateTime(followUp.follow_up_date);
             return (
-              <TouchableOpacity
+              <View
                 key={followUp.id}
                 style={styles.followUpCard}
-                onPress={() => handleFollowUp(followUp)}
               >
                 <View style={styles.followUpHeader}>
                   <Text style={styles.leadName}>{followUp.lead.client_name}</Text>
@@ -478,7 +477,31 @@ This is a 7-day advance reminder for the travel date.`;
                     </View>
                   )}
                 </View>
-              </TouchableOpacity>
+
+                <View style={styles.cardActionButtons}>
+                  <TouchableOpacity
+                    style={styles.cardActionButton}
+                    onPress={() => handleFollowUp(followUp)}
+                  >
+                    <View style={styles.buttonIconContainer}>
+                      <History size={16} color="#3b82f6" />
+                    </View>
+                    <Text style={styles.cardActionButtonText}>History</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.cardActionButton}
+                    onPress={() => {
+                      setCurrentLead(followUp.lead);
+                      setShowFollowUpModal(true);
+                    }}
+                  >
+                    <View style={styles.buttonIconContainer}>
+                      <Plus size={16} color="#10b981" />
+                    </View>
+                    <Text style={styles.cardActionButtonText}>New Follow-Up</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             );
           })
         )}
@@ -1002,6 +1025,32 @@ const styles = StyleSheet.create({
   },
   remarkText: {
     fontSize: 14,
+    color: '#1a1a1a',
+  },
+  cardActionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  cardActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#f3f4f6',
+  },
+  buttonIconContainer: {
+    marginRight: 4,
+  },
+  cardActionButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
     color: '#1a1a1a',
   },
   actionButtons: {
