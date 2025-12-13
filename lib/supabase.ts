@@ -34,11 +34,18 @@ export const supabase = createClient(
 
 export async function setUserContext(userId: string, userRole: string) {
   try {
-    await supabase.rpc('set_user_context', {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase not configured, skipping user context');
+      return;
+    }
+    const { error } = await supabase.rpc('set_user_context', {
       user_id: userId,
       user_role: userRole,
     });
+    if (error) {
+      console.warn('Error setting user context:', error.message);
+    }
   } catch (error) {
-    console.error('Error setting user context:', error);
+    console.warn('Failed to set user context:', error);
   }
 }

@@ -27,7 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userData = await AsyncStorage.getItem('user');
       if (userData) {
         const parsed = JSON.parse(userData);
-        await setUserContext(parsed.id, parsed.role);
+        // Set user context but don't block on it
+        setUserContext(parsed.id, parsed.role).catch(err => {
+          console.warn('Failed to set user context:', err);
+        });
         setUser(parsed);
       }
     } catch (error) {
@@ -45,7 +48,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (userData: User) => {
     try {
       await AsyncStorage.setItem('user', JSON.stringify(userData));
-      await setUserContext(userData.id, userData.role);
+      // Set user context but don't block on it
+      setUserContext(userData.id, userData.role).catch(err => {
+        console.warn('Failed to set user context:', err);
+      });
       setUser(userData);
     } catch (error) {
       console.error('Error saving user:', error);
