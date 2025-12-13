@@ -147,7 +147,9 @@ export default function ChatScreen() {
     >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#1a1a1a" />
+          <View style={styles.iconContainer}>
+            <ArrowLeft size={24} color="#1a1a1a" />
+          </View>
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <Text style={styles.headerTitle}>Chat with Admin</Text>
@@ -242,6 +244,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
+  },
+  iconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerInfo: {
     flex: 1,

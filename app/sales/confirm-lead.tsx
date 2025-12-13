@@ -106,7 +106,9 @@ export default function ConfirmLeadScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#1a1a1a" />
+          <View style={styles.iconContainer}>
+            <ArrowLeft size={24} color="#1a1a1a" />
+          </View>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Confirm Lead</Text>
         <View style={{ width: 24 }} />
@@ -286,6 +288,10 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
+  },
+  iconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,

@@ -62,7 +62,9 @@ export default function ConfirmedLeadsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#1a1a1a" />
+          <View style={styles.iconContainer}>
+            <ArrowLeft size={24} color="#1a1a1a" />
+          </View>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Confirmed Leads</Text>
         <View style={{ width: 24 }} />
