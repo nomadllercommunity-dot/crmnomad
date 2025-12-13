@@ -480,8 +480,7 @@ export default function FollowUpsScreen() {
                             <Calendar size={14} color="#666" />
                           </View>
                           <Text style={styles.historyDetailText}>
-                            Next Follow-Up: {new Date(history.next_follow_up_date).toLocaleDateString()}
-                            {history.next_follow_up_time && ` at ${history.next_follow_up_time.slice(0, 5)}`}
+                            {`Next Follow-Up: ${new Date(history.next_follow_up_date).toLocaleDateString()}${history.next_follow_up_time ? ` at ${history.next_follow_up_time.slice(0, 5)}` : ''}`}
                           </Text>
                         </View>
                       </View>
