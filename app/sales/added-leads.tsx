@@ -10,14 +10,16 @@ import {
   TextInput,
   AppState,
   AppStateStatus,
+  Alert,
 } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Lead } from '@/types';
-import { ArrowLeft, Phone, MessageCircle, X, Calendar, Users, MapPin, DollarSign } from 'lucide-react-native';
+import { ArrowLeft, Phone, MessageCircle, X, Calendar, Users, MapPin, DollarSign, ChevronDown } from 'lucide-react-native';
 import DateTimePickerComponent from '@/components/DateTimePicker';
+import { calendarService } from '@/services/calendar';
 
 export default function AddedLeadsScreen() {
   const { user } = useAuth();
@@ -37,13 +39,41 @@ export default function AddedLeadsScreen() {
   const [budget, setBudget] = useState('');
   const [remarks, setRemarks] = useState('');
 
-  const [followUpDate, setFollowUpDate] = useState(new Date());
-  const [followUpTime, setFollowUpTime] = useState(new Date());
+  const [actionType, setActionType] = useState('');
+  const [showActionPicker, setShowActionPicker] = useState(false);
   const [followUpRemark, setFollowUpRemark] = useState('');
+  const [nextFollowUpDate, setNextFollowUpDate] = useState(new Date());
+  const [nextFollowUpTime, setNextFollowUpTime] = useState(new Date());
+  const [itineraryId, setItineraryId] = useState('');
+  const [totalAmount, setTotalAmount] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [transactionId, setTransactionId] = useState('');
+  const [deadReason, setDeadReason] = useState('');
+  const [showDeadReasonPicker, setShowDeadReasonPicker] = useState(false);
+  const [confirmTravelDate, setConfirmTravelDate] = useState<Date | null>(null);
+  const [reminderTime, setReminderTime] = useState<Date | null>(null);
 
   const appState = useRef(AppState.currentState);
   const callInitiatedRef = useRef(false);
   const leadForCallRef = useRef<Lead | null>(null);
+
+  const actionTypes = [
+    { label: 'Itinerary Sent', value: 'itinerary_sent' },
+    { label: 'Itinerary Updated', value: 'itinerary_updated' },
+    { label: 'Follow Up', value: 'follow_up' },
+    { label: 'Confirm and Advance Paid', value: 'confirmed_advance_paid' },
+    { label: 'Dead', value: 'dead' },
+  ];
+
+  const deadReasons = [
+    'Budget too high',
+    'Found another agency',
+    'Plans cancelled',
+    'Not responding',
+    'Changed destination',
+    'Timing not suitable',
+    'Other',
+  ];
 
   useEffect(() => {
     fetchLeads();
@@ -129,18 +159,37 @@ export default function AddedLeadsScreen() {
     return null;
   };
 
+  const calculateDueAmount = () => {
+    const total = parseFloat(totalAmount) || 0;
+    const advance = parseFloat(advanceAmount) || 0;
+    return total - advance;
+  };
+
+  const getActionTypeLabel = (value: string) => {
+    return actionTypes.find((type) => type.value === value)?.label || value;
+  };
 
   const handleAddFollowUp = async () => {
     if (!currentLead) return;
 
     const validationError = validateProfile();
     if (validationError) {
-      alert(validationError);
+      Alert.alert('Error', validationError);
+      return;
+    }
+
+    if (!actionType) {
+      Alert.alert('Error', 'Please select an action type');
       return;
     }
 
     if (!followUpRemark.trim()) {
-      alert('Please add a remark for the follow-up');
+      Alert.alert('Error', 'Please add a remark');
+      return;
+    }
+
+    if (actionType === 'confirmed_advance_paid' && !confirmTravelDate) {
+      Alert.alert('Error', 'Please select a travel date');
       return;
     }
 
@@ -153,7 +202,6 @@ export default function AddedLeadsScreen() {
         no_of_kids: parseInt(noOfKids) || 0,
         expected_budget: parseFloat(budget),
         remark: remarks.trim() || null,
-        status: 'follow_up',
         updated_at: new Date().toISOString(),
       };
 
@@ -165,6 +213,18 @@ export default function AddedLeadsScreen() {
         updateData.travel_date = null;
       }
 
+      if (actionType === 'confirmed_advance_paid') {
+        updateData.status = 'confirmed';
+        if (confirmTravelDate) {
+          updateData.travel_date = confirmTravelDate.toISOString().split('T')[0];
+          updateData.travel_month = null;
+        }
+      } else if (actionType === 'dead') {
+        updateData.status = 'dead';
+      } else {
+        updateData.status = 'follow_up';
+      }
+
       const { error: updateError } = await supabase
         .from('leads')
         .update(updateData)
@@ -172,20 +232,37 @@ export default function AddedLeadsScreen() {
 
       if (updateError) throw updateError;
 
-      const combinedDateTime = new Date(followUpDate);
-      combinedDateTime.setHours(followUpTime.getHours());
-      combinedDateTime.setMinutes(followUpTime.getMinutes());
+      const followUpData: any = {
+        lead_id: currentLead.id,
+        sales_person_id: user?.id,
+        action_type: actionType,
+        follow_up_note: followUpRemark.trim(),
+        follow_up_date: new Date().toISOString(),
+        status: 'completed',
+      };
+
+      if (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType)) {
+        const dateValue = nextFollowUpDate.toISOString().split('T')[0];
+        const timeValue = nextFollowUpTime.toTimeString().split(':').slice(0, 2).join(':');
+        followUpData.next_follow_up_date = dateValue;
+        followUpData.next_follow_up_time = timeValue + ':00';
+      }
+
+      if (actionType === 'confirmed_advance_paid' && confirmTravelDate) {
+        followUpData.itinerary_id = itineraryId;
+        followUpData.total_amount = parseFloat(totalAmount);
+        followUpData.advance_amount = parseFloat(advanceAmount);
+        followUpData.due_amount = calculateDueAmount();
+        followUpData.transaction_id = transactionId;
+      }
+
+      if (actionType === 'dead') {
+        followUpData.dead_reason = deadReason;
+      }
 
       const { error: followUpError } = await supabase
         .from('follow_ups')
-        .insert({
-          lead_id: currentLead.id,
-          sales_person_id: user?.id,
-          follow_up_date: combinedDateTime.toISOString(),
-          status: 'pending',
-          update_type: 'follow_up',
-          remark: followUpRemark.trim(),
-        });
+        .insert(followUpData);
 
       if (followUpError) throw followUpError;
 
@@ -200,19 +277,83 @@ export default function AddedLeadsScreen() {
 
       if (callLogError) throw callLogError;
 
-      setShowUpdateModal(false);
-      resetForm();
-      setFollowUpRemark('');
-      setFollowUpDate(new Date());
-      setFollowUpTime(new Date());
+      const actionTypeLabel = getActionTypeLabel(actionType);
+      await supabase.from('notifications').insert({
+        user_id: currentLead.assigned_by || user?.id,
+        type: 'follow_up',
+        title: 'Follow-up Updated',
+        message: `Follow-up added for ${clientName} - ${actionTypeLabel}`,
+        lead_id: currentLead.id,
+      });
+
+      if (actionType === 'confirmed_advance_paid' && confirmTravelDate && user) {
+        const reminderDate = new Date(confirmTravelDate);
+        reminderDate.setDate(reminderDate.getDate() - 7);
+
+        const reminderTimeObj = reminderTime || new Date();
+
+        try {
+          const calendarTitle = `Travel Reminder: ${clientName}`;
+          const calendarDescription = `Client: ${clientName}
+Location: ${place}
+Pax: ${noOfPax}
+Travel Date: ${confirmTravelDate.toISOString().split('T')[0]}
+
+This is a 7-day advance reminder for the travel date.`;
+
+          const calendarEventDate = new Date(reminderDate);
+          calendarEventDate.setHours(reminderTimeObj.getHours());
+          calendarEventDate.setMinutes(reminderTimeObj.getMinutes());
+
+          const calendarEventId = await calendarService.createReminder(
+            {
+              title: calendarTitle,
+              description: calendarDescription,
+              startDate: calendarEventDate,
+            },
+            currentLead.id,
+            clientName
+          );
+
+          await supabase.from('reminders').insert({
+            lead_id: currentLead.id,
+            sales_person_id: user.id,
+            travel_date: confirmTravelDate.toISOString().split('T')[0],
+            reminder_date: reminderDate.toISOString().split('T')[0],
+            reminder_time: reminderTime?.toTimeString().slice(0, 5) || '09:00',
+            calendar_event_id: calendarEventId,
+            status: 'pending',
+          });
+        } catch (reminderError) {
+          console.error('Error creating reminder:', reminderError);
+        }
+      }
+
+      handleCloseModal();
       fetchLeads();
-      alert('Lead updated and moved to Follow Ups');
     } catch (err: any) {
       console.error('Error adding follow-up:', err);
-      alert('Failed to add follow-up. Please try again.');
+      Alert.alert('Error', err.message || 'Failed to add follow-up');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowUpdateModal(false);
+    resetForm();
+    setActionType('');
+    setFollowUpRemark('');
+    setNextFollowUpDate(new Date());
+    setNextFollowUpTime(new Date());
+    setItineraryId('');
+    setTotalAmount('');
+    setAdvanceAmount('');
+    setTransactionId('');
+    setDeadReason('');
+    setConfirmTravelDate(null);
+    setReminderTime(null);
+    setCurrentLead(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -388,30 +529,169 @@ export default function AddedLeadsScreen() {
             </View>
 
             <View style={styles.sectionDivider}>
-              <Text style={styles.sectionTitle}>Schedule Follow-Up</Text>
+              <Text style={styles.sectionTitle}>Follow-Up Action</Text>
               <Text style={styles.sectionSubtitle}>Required to save the lead details</Text>
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Follow-Up Date *</Text>
-              <DateTimePickerComponent
-                value={followUpDate}
-                onChange={setFollowUpDate}
-                mode="date"
-              />
+              <Text style={styles.label}>Action Type *</Text>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setShowActionPicker(!showActionPicker)}
+              >
+                <Text style={[styles.pickerButtonText, !actionType && styles.placeholderText]}>
+                  {actionType ? getActionTypeLabel(actionType) : 'Select action type'}
+                </Text>
+                <ChevronDown size={20} color="#666" />
+              </TouchableOpacity>
+              {showActionPicker && (
+                <View style={styles.pickerOptions}>
+                  {actionTypes.map((type) => (
+                    <TouchableOpacity
+                      key={type.value}
+                      style={styles.pickerOption}
+                      onPress={() => {
+                        setActionType(type.value);
+                        setShowActionPicker(false);
+                      }}
+                    >
+                      <Text style={styles.pickerOptionText}>{type.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Follow-Up Time *</Text>
-              <DateTimePickerComponent
-                value={followUpTime}
-                onChange={setFollowUpTime}
-                mode="time"
-              />
-            </View>
+            {['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType) && (
+              <>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Next Follow-Up Date *</Text>
+                  <DateTimePickerComponent
+                    value={nextFollowUpDate}
+                    onChange={setNextFollowUpDate}
+                    mode="date"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Next Follow-Up Time *</Text>
+                  <DateTimePickerComponent
+                    value={nextFollowUpTime}
+                    onChange={setNextFollowUpTime}
+                    mode="time"
+                  />
+                </View>
+              </>
+            )}
+
+            {actionType === 'confirmed_advance_paid' && (
+              <>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Travel Date *</Text>
+                  <DateTimePickerComponent
+                    value={confirmTravelDate}
+                    onChange={setConfirmTravelDate}
+                    placeholder="Select travel date"
+                    mode="date"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Reminder Time</Text>
+                  <DateTimePickerComponent
+                    value={reminderTime}
+                    onChange={setReminderTime}
+                    placeholder="Select reminder time"
+                    mode="time"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Itinerary ID</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={itineraryId}
+                    onChangeText={setItineraryId}
+                    placeholder="Enter itinerary ID"
+                  />
+                </View>
+
+                <View style={styles.formRow}>
+                  <View style={[styles.formGroup, styles.halfWidth]}>
+                    <Text style={styles.label}>Total Amount</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={totalAmount}
+                      onChangeText={setTotalAmount}
+                      placeholder="0"
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+
+                  <View style={[styles.formGroup, styles.halfWidth]}>
+                    <Text style={styles.label}>Advance Amount</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={advanceAmount}
+                      onChangeText={setAdvanceAmount}
+                      placeholder="0"
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+
+                {totalAmount && advanceAmount && (
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Due Amount</Text>
+                    <Text style={styles.dueAmountText}>₹ {calculateDueAmount().toFixed(2)}</Text>
+                  </View>
+                )}
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Transaction ID</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={transactionId}
+                    onChangeText={setTransactionId}
+                    placeholder="Enter transaction ID"
+                  />
+                </View>
+              </>
+            )}
+
+            {actionType === 'dead' && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Dead Reason *</Text>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => setShowDeadReasonPicker(!showDeadReasonPicker)}
+                >
+                  <Text style={[styles.pickerButtonText, !deadReason && styles.placeholderText]}>
+                    {deadReason || 'Select reason'}
+                  </Text>
+                  <ChevronDown size={20} color="#666" />
+                </TouchableOpacity>
+                {showDeadReasonPicker && (
+                  <View style={styles.pickerOptions}>
+                    {deadReasons.map((reason) => (
+                      <TouchableOpacity
+                        key={reason}
+                        style={styles.pickerOption}
+                        onPress={() => {
+                          setDeadReason(reason);
+                          setShowDeadReasonPicker(false);
+                        }}
+                      >
+                        <Text style={styles.pickerOptionText}>{reason}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Follow-Up Remarks *</Text>
+              <Text style={styles.label}>Remarks *</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={followUpRemark}
@@ -431,7 +711,7 @@ export default function AddedLeadsScreen() {
                 {saving ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.modalButtonText}>Save & Add to Follow-Ups</Text>
+                  <Text style={styles.modalButtonText}>Save & Add Follow-Up</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -637,5 +917,51 @@ const styles = StyleSheet.create({
   sectionSubtitle: {
     fontSize: 14,
     color: '#666',
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#f9f9f9',
+  },
+  pickerButtonText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  placeholderText: {
+    color: '#999',
+  },
+  pickerOptions: {
+    marginTop: 8,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pickerOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  pickerOptionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dueAmountText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#14b8a6',
+    paddingVertical: 12,
   },
 });
