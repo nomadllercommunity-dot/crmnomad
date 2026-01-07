@@ -34,7 +34,6 @@ export default function AddedLeadsScreen() {
   const [travelDate, setTravelDate] = useState<Date | null>(null);
   const [travelMonth, setTravelMonth] = useState('');
   const [noOfPax, setNoOfPax] = useState('');
-  const [noOfKids, setNoOfKids] = useState('0');
   const [place, setPlace] = useState('');
   const [budget, setBudget] = useState('');
   const [remarks, setRemarks] = useState('');
@@ -124,7 +123,6 @@ export default function AddedLeadsScreen() {
     setTravelDate(null);
     setTravelMonth('');
     setNoOfPax('');
-    setNoOfKids('0');
     setPlace('');
     setBudget('');
     setRemarks('');
@@ -199,7 +197,6 @@ export default function AddedLeadsScreen() {
         client_name: clientName.trim(),
         place: place.trim(),
         no_of_pax: parseInt(noOfPax),
-        no_of_kids: parseInt(noOfKids) || 0,
         expected_budget: parseFloat(budget),
         remark: remarks.trim() || null,
         updated_at: new Date().toISOString(),
@@ -471,28 +468,15 @@ This is a 7-day advance reminder for the travel date.`;
               />
             </View>
 
-            <View style={styles.formRow}>
-              <View style={[styles.formGroup, styles.halfWidth]}>
-                <Text style={styles.label}>Number of Persons *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={noOfPax}
-                  onChangeText={setNoOfPax}
-                  placeholder="0"
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <View style={[styles.formGroup, styles.halfWidth]}>
-                <Text style={styles.label}>Number of Kids</Text>
-                <TextInput
-                  style={styles.input}
-                  value={noOfKids}
-                  onChangeText={setNoOfKids}
-                  placeholder="0"
-                  keyboardType="numeric"
-                />
-              </View>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Number of Persons *</Text>
+              <TextInput
+                style={styles.input}
+                value={noOfPax}
+                onChangeText={setNoOfPax}
+                placeholder="0"
+                keyboardType="numeric"
+              />
             </View>
 
             <View style={styles.formGroup}>
