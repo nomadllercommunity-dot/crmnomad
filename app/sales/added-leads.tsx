@@ -218,8 +218,6 @@ export default function AddedLeadsScreen() {
         }
       } else if (actionType === 'dead') {
         updateData.status = 'dead';
-      } else {
-        updateData.status = 'follow_up';
       }
 
       const { error: updateError } = await supabase
