@@ -3,12 +3,13 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ListTodo, Clock, Flame, CheckCircle, Briefcase, LogOut, MessageCircle, Bell } from 'lucide-react-native';
+import { ListTodo, Clock, Flame, CheckCircle, Briefcase, LogOut, MessageCircle, Bell, UserPlus, Plus } from 'lucide-react-native';
 
 export default function SalesDashboard() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [counts, setCounts] = useState({
+    addedLeads: 0,
     allocated: 0,
     followUps: 0,
     hot: 0,
@@ -44,11 +45,18 @@ export default function SalesDashboard() {
   useFocusEffect(
     useCallback(() => {
       fetchUnreadNotifications();
+      fetchCounts();
     }, [])
   );
 
   const fetchCounts = async () => {
     try {
+      const { count: addedLeadsCount } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .eq('assigned_to', user?.id)
+        .eq('status', 'added_by_sales');
+
       const { count: allocatedCount } = await supabase
         .from('leads')
         .select('*', { count: 'exact', head: true })
@@ -80,6 +88,7 @@ export default function SalesDashboard() {
         .eq('status', 'allocated_to_operations');
 
       setCounts({
+        addedLeads: addedLeadsCount || 0,
         allocated: allocatedCount || 0,
         followUps: followUpsCount || 0,
         hot: hotCount || 0,
@@ -111,6 +120,13 @@ export default function SalesDashboard() {
   };
 
   const menuItems = [
+    {
+      title: 'Added Leads',
+      count: counts.addedLeads,
+      icon: UserPlus,
+      route: '/sales/added-leads',
+      color: '#14b8a6',
+    },
     {
       title: 'Allocated Leads',
       count: counts.allocated,
@@ -192,6 +208,13 @@ export default function SalesDashboard() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push('/sales/add-lead')}
+      >
+        <Plus size={28} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -291,5 +314,21 @@ const styles = StyleSheet.create({
   menuCount: {
     fontSize: 14,
     color: '#666',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#14b8a6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });
