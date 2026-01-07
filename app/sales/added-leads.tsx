@@ -25,7 +25,6 @@ export default function AddedLeadsScreen() {
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [currentLead, setCurrentLead] = useState<Lead | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -130,62 +129,6 @@ export default function AddedLeadsScreen() {
     return null;
   };
 
-  const handleSaveProfile = async () => {
-    if (!currentLead) return;
-
-    const validationError = validateProfile();
-    if (validationError) {
-      alert(validationError);
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const updateData: any = {
-        client_name: clientName.trim(),
-        place: place.trim(),
-        no_of_pax: parseInt(noOfPax),
-        expected_budget: parseFloat(budget),
-        remark: remarks.trim() || null,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (travelDate) {
-        updateData.travel_date = travelDate.toISOString().split('T')[0];
-        updateData.travel_month = null;
-      } else if (travelMonth.trim()) {
-        updateData.travel_month = travelMonth.trim();
-        updateData.travel_date = null;
-      }
-
-      const { error: updateError } = await supabase
-        .from('leads')
-        .update(updateData)
-        .eq('id', currentLead.id);
-
-      if (updateError) throw updateError;
-
-      const { error: callLogError } = await supabase
-        .from('call_logs')
-        .insert({
-          lead_id: currentLead.id,
-          sales_person_id: user?.id,
-          call_start_time: new Date().toISOString(),
-          call_duration: 0,
-        });
-
-      if (callLogError) throw callLogError;
-
-      setShowUpdateModal(false);
-      resetForm();
-      fetchLeads();
-    } catch (err: any) {
-      console.error('Error saving profile:', err);
-      alert('Failed to save profile. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleAddFollowUp = async () => {
     if (!currentLead) return;
@@ -207,6 +150,7 @@ export default function AddedLeadsScreen() {
         client_name: clientName.trim(),
         place: place.trim(),
         no_of_pax: parseInt(noOfPax),
+        no_of_kids: parseInt(noOfKids) || 0,
         expected_budget: parseFloat(budget),
         remark: remarks.trim() || null,
         status: 'follow_up',
@@ -257,9 +201,10 @@ export default function AddedLeadsScreen() {
       if (callLogError) throw callLogError;
 
       setShowUpdateModal(false);
-      setShowFollowUpModal(false);
       resetForm();
       setFollowUpRemark('');
+      setFollowUpDate(new Date());
+      setFollowUpTime(new Date());
       fetchLeads();
       alert('Lead updated and moved to Follow Ups');
     } catch (err: any) {
@@ -442,51 +387,9 @@ export default function AddedLeadsScreen() {
               />
             </View>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
-                onPress={handleSaveProfile}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.modalButtonText}>Save Profile</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.followUpButton]}
-                onPress={() => {
-                  const validationError = validateProfile();
-                  if (validationError) {
-                    alert(validationError);
-                    return;
-                  }
-                  setShowFollowUpModal(true);
-                }}
-                disabled={saving}
-              >
-                <Text style={styles.modalButtonText}>Add Follow-Up</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showFollowUpModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowFollowUpModal(false)}
-      >
-        <View style={styles.followUpModalOverlay}>
-          <View style={styles.followUpModalContent}>
-            <View style={styles.followUpModalHeader}>
-              <Text style={styles.modalTitle}>Schedule Follow-Up</Text>
-              <TouchableOpacity onPress={() => setShowFollowUpModal(false)}>
-                <X size={24} color="#333" />
-              </TouchableOpacity>
+            <View style={styles.sectionDivider}>
+              <Text style={styles.sectionTitle}>Schedule Follow-Up</Text>
+              <Text style={styles.sectionSubtitle}>Required to save the lead details</Text>
             </View>
 
             <View style={styles.formGroup}>
@@ -508,29 +411,31 @@ export default function AddedLeadsScreen() {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Remarks *</Text>
+              <Text style={styles.label}>Follow-Up Remarks *</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={followUpRemark}
                 onChangeText={setFollowUpRemark}
-                placeholder="Add follow-up notes"
+                placeholder="Add follow-up notes (required)"
                 multiline
                 numberOfLines={3}
               />
             </View>
 
-            <TouchableOpacity
-              style={[styles.modalButton, styles.confirmButton]}
-              onPress={handleAddFollowUp}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.modalButtonText}>Confirm Follow-Up</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleAddFollowUp}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalButtonText}>Save & Add to Follow-Ups</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -708,12 +613,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
-  saveButton: {
-    backgroundColor: '#14b8a6',
-  },
-  followUpButton: {
-    backgroundColor: '#f59e0b',
-  },
   confirmButton: {
     backgroundColor: '#14b8a6',
   },
@@ -722,23 +621,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  followUpModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  followUpModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    width: '90%',
-    maxWidth: 400,
-  },
-  followUpModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  sectionDivider: {
+    marginTop: 24,
     marginBottom: 20,
+    paddingTop: 24,
+    borderTopWidth: 2,
+    borderTopColor: '#e5e5e5',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
   },
 });
