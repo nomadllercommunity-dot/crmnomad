@@ -11,7 +11,7 @@ import {
   Clipboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Plus, Copy, Edit } from 'lucide-react-native';
+import { ArrowLeft, Plus, Copy, Edit, Search, Filter, X } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -19,6 +19,7 @@ interface Itinerary {
   id: string;
   name: string;
   days: number;
+  no_of_pax: number;
   full_itinerary: string;
   inclusions: string;
   exclusions: string;
@@ -33,14 +34,20 @@ export default function SavedItineraryScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
+  const [filteredItineraries, setFilteredItineraries] = useState<Itinerary[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [exchangeRate, setExchangeRate] = useState(83);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterDays, setFilterDays] = useState('');
+  const [filterPax, setFilterPax] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
     name: '',
     days: '1',
+    no_of_pax: '2',
     full_itinerary: '',
     inclusions: '',
     exclusions: '',
@@ -51,6 +58,36 @@ export default function SavedItineraryScreen() {
     fetchItineraries();
     fetchExchangeRate();
   }, []);
+
+  useEffect(() => {
+    filterItineraries();
+  }, [itineraries, searchQuery, filterDays, filterPax]);
+
+  const filterItineraries = () => {
+    let filtered = [...itineraries];
+
+    if (searchQuery) {
+      filtered = filtered.filter((itinerary) =>
+        itinerary.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (filterDays) {
+      filtered = filtered.filter((itinerary) => itinerary.days === parseInt(filterDays));
+    }
+
+    if (filterPax) {
+      filtered = filtered.filter((itinerary) => itinerary.no_of_pax === parseInt(filterPax));
+    }
+
+    setFilteredItineraries(filtered);
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilterDays('');
+    setFilterPax('');
+  };
 
   const fetchExchangeRate = async () => {
     try {
@@ -86,6 +123,7 @@ export default function SavedItineraryScreen() {
     setFormData({
       name: itinerary.name,
       days: itinerary.days.toString(),
+      no_of_pax: itinerary.no_of_pax.toString(),
       full_itinerary: itinerary.full_itinerary,
       inclusions: itinerary.inclusions,
       exclusions: itinerary.exclusions,
@@ -110,6 +148,7 @@ export default function SavedItineraryScreen() {
           .update({
             name: formData.name,
             days: parseInt(formData.days),
+            no_of_pax: parseInt(formData.no_of_pax),
             full_itinerary: formData.full_itinerary,
             inclusions: formData.inclusions,
             exclusions: formData.exclusions,
@@ -126,6 +165,7 @@ export default function SavedItineraryScreen() {
           .insert([{
             name: formData.name,
             days: parseInt(formData.days),
+            no_of_pax: parseInt(formData.no_of_pax),
             full_itinerary: formData.full_itinerary,
             inclusions: formData.inclusions,
             exclusions: formData.exclusions,
@@ -140,6 +180,7 @@ export default function SavedItineraryScreen() {
       setFormData({
         name: '',
         days: '1',
+        no_of_pax: '2',
         full_itinerary: '',
         inclusions: '',
         exclusions: '',
@@ -161,10 +202,13 @@ export default function SavedItineraryScreen() {
     const costINR = (itinerary.cost_usd * finalExchangeRate).toFixed(2);
 
     const packageText = `
+🏝️🌴 NOMADLLER PVT LTD – EXCLUSIVE BALI PACKAGE 🇮🇩
+
 🌟 ${itinerary.name}
 ━━━━━━━━━━━━━━━━━━━━
 
 📅 Duration: ${itinerary.days} Days
+👥 Number of Passengers: ${itinerary.no_of_pax}
 
 📍 FULL ITINERARY:
 ${itinerary.full_itinerary}
@@ -218,6 +262,7 @@ NOMADLLER PVT LTD
               setFormData({
                 name: '',
                 days: '1',
+                no_of_pax: '2',
                 full_itinerary: '',
                 inclusions: '',
                 exclusions: '',
@@ -230,6 +275,61 @@ NOMADLLER PVT LTD
           <Plus size={24} color="#007AFF" />
         </TouchableOpacity>
       </View>
+
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Search size={20} color="#8E8E93" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search itineraries..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <X size={20} color="#8E8E93" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowFilters(!showFilters)}
+        >
+          <Filter size={20} color={showFilters ? '#007AFF' : '#8E8E93'} />
+        </TouchableOpacity>
+      </View>
+
+      {showFilters && (
+        <View style={styles.filterContainer}>
+          <View style={styles.filterRow}>
+            <View style={styles.filterItem}>
+              <Text style={styles.filterLabel}>Days</Text>
+              <TextInput
+                style={styles.filterInput}
+                placeholder="e.g., 7"
+                value={filterDays}
+                onChangeText={setFilterDays}
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={styles.filterItem}>
+              <Text style={styles.filterLabel}>Passengers</Text>
+              <TextInput
+                style={styles.filterInput}
+                placeholder="e.g., 2"
+                value={filterPax}
+                onChangeText={setFilterPax}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+          {(filterDays || filterPax) && (
+            <TouchableOpacity style={styles.clearFiltersButton} onPress={clearFilters}>
+              <Text style={styles.clearFiltersText}>Clear Filters</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       <ScrollView style={styles.content}>
         {showForm && (
@@ -252,6 +352,15 @@ NOMADLLER PVT LTD
               value={formData.days}
               onChangeText={(text) => setFormData({ ...formData, days: text })}
               placeholder="e.g., 7"
+              keyboardType="numeric"
+            />
+
+            <Text style={styles.label}>Number of Passengers *</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.no_of_pax}
+              onChangeText={(text) => setFormData({ ...formData, no_of_pax: text })}
+              placeholder="e.g., 2"
               keyboardType="numeric"
             />
 
@@ -314,6 +423,7 @@ NOMADLLER PVT LTD
                   setFormData({
                     name: '',
                     days: '1',
+                    no_of_pax: '2',
                     full_itinerary: '',
                     inclusions: '',
                     exclusions: '',
@@ -340,13 +450,17 @@ NOMADLLER PVT LTD
           </View>
         )}
 
-        {itineraries.length === 0 ? (
+        {filteredItineraries.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No saved itineraries yet</Text>
-            <Text style={styles.emptySubtext}>Tap + to add your first itinerary</Text>
+            <Text style={styles.emptyText}>
+              {itineraries.length === 0 ? 'No saved itineraries yet' : 'No itineraries match your filters'}
+            </Text>
+            <Text style={styles.emptySubtext}>
+              {itineraries.length === 0 ? 'Tap + to add your first itinerary' : 'Try adjusting your search or filters'}
+            </Text>
           </View>
         ) : (
-          itineraries.map((itinerary) => (
+          filteredItineraries.map((itinerary) => (
             <View key={itinerary.id} style={styles.itineraryCard}>
               <View style={styles.itineraryHeader}>
                 <Text style={styles.itineraryName}>{itinerary.name}</Text>
@@ -358,7 +472,10 @@ NOMADLLER PVT LTD
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.itineraryDays}>{itinerary.days} Days</Text>
+              <View style={styles.itineraryMeta}>
+                <Text style={styles.itineraryDays}>{itinerary.days} Days</Text>
+                <Text style={styles.itineraryPax}>👥 {itinerary.no_of_pax} Passengers</Text>
+              </View>
 
               <View style={styles.itinerarySection}>
                 <Text style={styles.sectionTitle}>Itinerary:</Text>
@@ -441,6 +558,76 @@ const styles = StyleSheet.create({
   },
   addButton: {
     padding: 8,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+    gap: 12,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#000',
+  },
+  filterButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 10,
+  },
+  filterContainer: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  filterItem: {
+    flex: 1,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#8E8E93',
+    marginBottom: 6,
+  },
+  filterInput: {
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+    color: '#000',
+    backgroundColor: '#F9F9F9',
+  },
+  clearFiltersButton: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  clearFiltersText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF3B30',
   },
   content: {
     flex: 1,
@@ -557,11 +744,20 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: 4,
   },
+  itineraryMeta: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
+  },
   itineraryDays: {
     fontSize: 14,
     color: '#007AFF',
     fontWeight: '500',
-    marginBottom: 12,
+  },
+  itineraryPax: {
+    fontSize: 14,
+    color: '#34C759',
+    fontWeight: '500',
   },
   itinerarySection: {
     marginBottom: 12,
