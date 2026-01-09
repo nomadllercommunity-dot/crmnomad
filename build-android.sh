@@ -22,7 +22,7 @@ npx eas-cli init --force || echo "⚠️ EAS already initialized or init skipped
 echo ""
 echo "📦 Building Android APK..."
 echo "This will take several minutes. You can monitor progress at: https://expo.dev"
-npx eas-cli build --platform android --profile preview --non-interactive
+npx eas-cli build --platform android --profile preview
 
 echo ""
 echo "✅ Build complete! Check your EAS dashboard for the download link."
