@@ -11,7 +11,7 @@ import {
   Clipboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Plus, Copy, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, Plus, Copy, Trash2, Edit } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -35,6 +35,7 @@ export default function SavedItineraryScreen() {
   const [itineraries, setItineraries] = useState<Itinerary[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [exchangeRate, setExchangeRate] = useState(83);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -81,6 +82,19 @@ export default function SavedItineraryScreen() {
     }
   };
 
+  const handleEdit = (itinerary: Itinerary) => {
+    setFormData({
+      name: itinerary.name,
+      days: itinerary.days.toString(),
+      full_itinerary: itinerary.full_itinerary,
+      inclusions: itinerary.inclusions,
+      exclusions: itinerary.exclusions,
+      cost_usd: itinerary.cost_usd.toString(),
+    });
+    setEditingId(itinerary.id);
+    setShowForm(true);
+  };
+
   const handleSave = async () => {
     if (!formData.name || !formData.days || !formData.full_itinerary || !formData.cost_usd) {
       Alert.alert('Error', 'Please fill in all required fields');
@@ -89,21 +103,40 @@ export default function SavedItineraryScreen() {
 
     try {
       setSaving(true);
-      const { error } = await supabase
-        .from('itineraries')
-        .insert([{
-          name: formData.name,
-          days: parseInt(formData.days),
-          full_itinerary: formData.full_itinerary,
-          inclusions: formData.inclusions,
-          exclusions: formData.exclusions,
-          cost_usd: parseFloat(formData.cost_usd),
-          created_by: user?.id,
-        }]);
 
-      if (error) throw error;
+      if (editingId) {
+        const { error } = await supabase
+          .from('itineraries')
+          .update({
+            name: formData.name,
+            days: parseInt(formData.days),
+            full_itinerary: formData.full_itinerary,
+            inclusions: formData.inclusions,
+            exclusions: formData.exclusions,
+            cost_usd: parseFloat(formData.cost_usd),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', editingId);
 
-      Alert.alert('Success', 'Itinerary saved successfully');
+        if (error) throw error;
+        Alert.alert('Success', 'Itinerary updated successfully');
+      } else {
+        const { error } = await supabase
+          .from('itineraries')
+          .insert([{
+            name: formData.name,
+            days: parseInt(formData.days),
+            full_itinerary: formData.full_itinerary,
+            inclusions: formData.inclusions,
+            exclusions: formData.exclusions,
+            cost_usd: parseFloat(formData.cost_usd),
+            created_by: user?.id,
+          }]);
+
+        if (error) throw error;
+        Alert.alert('Success', 'Itinerary saved successfully');
+      }
+
       setFormData({
         name: '',
         days: '1',
@@ -112,6 +145,7 @@ export default function SavedItineraryScreen() {
         exclusions: '',
         cost_usd: '',
       });
+      setEditingId(null);
       setShowForm(false);
       fetchItineraries();
     } catch (error) {
@@ -175,6 +209,8 @@ ${itinerary.exclusions}
 (Exchange Rate: ${finalExchangeRate.toFixed(2)})
 
 ━━━━━━━━━━━━━━━━━━━━
+Package prepared by
+NOMADLLER PVT LTD
     `.trim();
 
     Clipboard.setString(packageText);
@@ -202,7 +238,23 @@ ${itinerary.exclusions}
           <ArrowLeft size={24} color="#007AFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Saved Itineraries</Text>
-        <TouchableOpacity onPress={() => setShowForm(!showForm)} style={styles.addButton}>
+        <TouchableOpacity
+          onPress={() => {
+            setShowForm(!showForm);
+            if (showForm) {
+              setEditingId(null);
+              setFormData({
+                name: '',
+                days: '1',
+                full_itinerary: '',
+                inclusions: '',
+                exclusions: '',
+                cost_usd: '',
+              });
+            }
+          }}
+          style={styles.addButton}
+        >
           <Plus size={24} color="#007AFF" />
         </TouchableOpacity>
       </View>
@@ -210,7 +262,9 @@ ${itinerary.exclusions}
       <ScrollView style={styles.content}>
         {showForm && (
           <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Add New Itinerary</Text>
+            <Text style={styles.formTitle}>
+              {editingId ? 'Edit Itinerary' : 'Add New Itinerary'}
+            </Text>
 
             <Text style={styles.label}>Itinerary Name *</Text>
             <TextInput
@@ -282,7 +336,18 @@ ${itinerary.exclusions}
             <View style={styles.formButtons}>
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
-                onPress={() => setShowForm(false)}
+                onPress={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                  setFormData({
+                    name: '',
+                    days: '1',
+                    full_itinerary: '',
+                    inclusions: '',
+                    exclusions: '',
+                    cost_usd: '',
+                  });
+                }}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
@@ -294,7 +359,9 @@ ${itinerary.exclusions}
                 {saving ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Save Itinerary</Text>
+                  <Text style={styles.saveButtonText}>
+                    {editingId ? 'Update Itinerary' : 'Save Itinerary'}
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -311,9 +378,20 @@ ${itinerary.exclusions}
             <View key={itinerary.id} style={styles.itineraryCard}>
               <View style={styles.itineraryHeader}>
                 <Text style={styles.itineraryName}>{itinerary.name}</Text>
-                <TouchableOpacity onPress={() => handleDelete(itinerary.id)}>
-                  <Trash2 size={20} color="#FF3B30" />
-                </TouchableOpacity>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    onPress={() => handleEdit(itinerary)}
+                    style={styles.actionButton}
+                  >
+                    <Edit size={20} color="#007AFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDelete(itinerary.id)}
+                    style={styles.actionButton}
+                  >
+                    <Trash2 size={20} color="#FF3B30" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <Text style={styles.itineraryDays}>{itinerary.days} Days</Text>
@@ -511,6 +589,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000',
     flex: 1,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    padding: 4,
   },
   itineraryDays: {
     fontSize: 14,
