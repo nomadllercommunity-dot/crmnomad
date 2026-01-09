@@ -3,7 +3,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ListTodo, Clock, Flame, CheckCircle, Briefcase, LogOut, MessageCircle, Bell, UserPlus, Plus } from 'lucide-react-native';
+import { ListTodo, Clock, Flame, CheckCircle, Briefcase, LogOut, MessageCircle, Bell, UserPlus, Plus, BookOpen } from 'lucide-react-native';
 
 export default function SalesDashboard() {
   const { user, logout } = useAuth();
@@ -164,6 +164,16 @@ export default function SalesDashboard() {
     },
   ];
 
+  const utilityItems = [
+    {
+      title: 'Saved Itinerary',
+      description: 'View and manage tour packages',
+      icon: BookOpen,
+      route: '/sales/saved-itinerary',
+      color: '#ec4899',
+    },
+  ];
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -204,6 +214,23 @@ export default function SalesDashboard() {
             <View style={styles.menuTextContainer}>
               <Text style={styles.menuTitle}>{item.title}</Text>
               <Text style={styles.menuCount}>{item.count} leads</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        <Text style={styles.sectionTitle}>Tools</Text>
+        {utilityItems.map((item, index) => (
+          <TouchableOpacity
+            key={`util-${index}`}
+            style={styles.menuCard}
+            onPress={() => router.push(item.route as any)}
+          >
+            <View style={[styles.iconContainer, { backgroundColor: item.color }]}>
+              <item.icon size={28} color="#fff" />
+            </View>
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuTitle}>{item.title}</Text>
+              <Text style={styles.menuDescription}>{item.description}</Text>
             </View>
           </TouchableOpacity>
         ))}
@@ -314,6 +341,18 @@ const styles = StyleSheet.create({
   menuCount: {
     fontSize: 14,
     color: '#666',
+  },
+  menuDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginTop: 24,
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
   fab: {
     position: 'absolute',
