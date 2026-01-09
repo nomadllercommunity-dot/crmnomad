@@ -7,6 +7,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -43,6 +45,7 @@ export async function scheduleLocalNotification(
       return null;
     }
 
+    const trigger = triggerSeconds === 0 ? null : { seconds: triggerSeconds };
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title,
@@ -50,7 +53,7 @@ export async function scheduleLocalNotification(
         data: data || {},
         sound: true,
       },
-      trigger: triggerSeconds === 0 ? null : { seconds: triggerSeconds },
+      trigger: trigger as any,
     });
 
     return notificationId;
