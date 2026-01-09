@@ -1,6 +1,12 @@
 import { Stack } from 'expo-router/stack';
+import { useEffect } from 'react';
+import { requestNotificationPermissions } from '@/services/notifications';
 
 export default function AdminLayout() {
+  useEffect(() => {
+    requestNotificationPermissions();
+  }, []);
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />

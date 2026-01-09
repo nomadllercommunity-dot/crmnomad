@@ -202,31 +202,31 @@ export default function SavedItineraryScreen() {
     const costINR = (itinerary.cost_usd * finalExchangeRate).toFixed(2);
 
     const packageText = `
-🏝️🌴 NOMADLLER PVT LTD – EXCLUSIVE BALI PACKAGE 🇮🇩
+🏝️🌴 *NOMADLLER PVT LTD – EXCLUSIVE BALI PACKAGE* 🇮🇩
 
-🌟 ${itinerary.name}
+🌟 *${itinerary.name}*
 ━━━━━━━━━━━━━━━━━━━━
 
-📅 Duration: ${itinerary.days} Days
-👥 Number of Passengers: ${itinerary.no_of_pax}
+📅 *Duration:* ${itinerary.days} Days
+👥 *Number of Passengers:* ${itinerary.no_of_pax}
 
-📍 FULL ITINERARY:
+📍 *FULL ITINERARY:*
 ${itinerary.full_itinerary}
 
-✅ INCLUSIONS:
+✅ *INCLUSIONS:*
 ${itinerary.inclusions}
 
-❌ EXCLUSIONS:
+❌ *EXCLUSIONS:*
 ${itinerary.exclusions}
 
-💰 PACKAGE COST:
+💰 *PACKAGE COST:*
 • USD: $${itinerary.cost_usd}
 • INR: ₹${costINR}
 (Exchange Rate: ${finalExchangeRate.toFixed(2)})
 
 ━━━━━━━━━━━━━━━━━━━━
-Package prepared by
-NOMADLLER PVT LTD
+*Package prepared by*
+*NOMADLLER PVT LTD*
     `.trim();
 
     Clipboard.setString(packageText);

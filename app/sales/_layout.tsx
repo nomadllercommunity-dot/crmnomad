@@ -1,6 +1,33 @@
 import { Stack } from 'expo-router/stack';
+import { useEffect } from 'react';
+import { requestNotificationPermissions, addNotificationResponseListener, addNotificationReceivedListener } from '@/services/notifications';
+import { useRouter } from 'expo-router';
 
 export default function SalesLayout() {
+  const router = useRouter();
+
+  useEffect(() => {
+    requestNotificationPermissions();
+
+    const responseListener = addNotificationResponseListener((response) => {
+      const data = response.notification.request.content.data;
+      if (data.type === 'lead_assignment') {
+        router.push('/sales/allocated-leads');
+      } else if (data.type === 'follow_up') {
+        router.push('/sales/follow-ups');
+      }
+    });
+
+    const receivedListener = addNotificationReceivedListener((notification) => {
+      console.log('Notification received:', notification);
+    });
+
+    return () => {
+      responseListener();
+      receivedListener();
+    };
+  }, []);
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />

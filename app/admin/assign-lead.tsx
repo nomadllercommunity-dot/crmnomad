@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { User } from '@/types';
 import { ArrowLeft, Check, Calendar, ChevronDown, Phone, MessageCircle } from 'lucide-react-native';
 import DateTimePickerComponent from '@/components/DateTimePicker';
+import { sendLeadAssignmentNotification } from '@/services/notifications';
 
 export default function AssignLeadScreen() {
   const { user } = useAuth();
@@ -130,6 +131,12 @@ export default function AssignLeadScreen() {
             lead_id: leadId,
           },
         ]);
+
+        await sendLeadAssignmentNotification(
+          formData.assignedTo,
+          formData.clientName,
+          `${formData.countryCode}${formData.contactNumber}`
+        );
       }
 
       Alert.alert('Success', 'Lead assigned successfully');

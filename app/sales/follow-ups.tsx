@@ -7,6 +7,7 @@ import { Lead } from '@/types';
 import { ArrowLeft, Calendar, Clock, Phone, MessageCircle, X, ChevronDown, Plus, History } from 'lucide-react-native';
 import DateTimePickerComponent from '@/components/DateTimePicker';
 import { calendarService } from '@/services/calendar';
+import { scheduleFollowUpNotification } from '@/services/notifications';
 
 interface FollowUpWithLead {
   id: string;
@@ -267,6 +268,18 @@ export default function FollowUpsScreen() {
           .from('leads')
           .update({ status: 'follow_up' })
           .eq('id', currentLead.id);
+
+        const followUpDateTime = new Date(nextFollowUpDate);
+        const timeComponents = nextFollowUpTime.toTimeString().split(':');
+        followUpDateTime.setHours(parseInt(timeComponents[0]));
+        followUpDateTime.setMinutes(parseInt(timeComponents[1]));
+
+        await scheduleFollowUpNotification(
+          user?.id || '',
+          currentLead.client_name,
+          followUpDateTime,
+          remark
+        );
       }
 
       const actionTypeLabel = getActionTypeLabel(actionType);
