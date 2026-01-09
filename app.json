@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Telecom CRM",
-    "slug": "telecom-crm-app-2026",
+    "slug": "telecom-crm-fresh-2026",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,10 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.telecomcrm.app"
+      "bundleIdentifier": "com.telecomcrm.fresh2026"
     },
     "android": {
-      "package": "com.telecomcrm.app",
+      "package": "com.telecomcrm.fresh2026",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
