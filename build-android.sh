@@ -16,7 +16,7 @@ npx eas-cli whoami || {
 # Initialize EAS project (only needed once)
 echo ""
 echo "🔧 Initializing EAS project..."
-npx eas-cli init --force --non-interactive || echo "⚠️ EAS already initialized or init skipped"
+npx eas-cli init --force || echo "⚠️ EAS already initialized or init skipped"
 
 # Build Android APK
 echo ""

@@ -3,6 +3,7 @@
     "name": "Telecom CRM",
     "slug": "telecom-crm-fresh-2026",
     "version": "1.0.0",
+    "owner": "faiznomad",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
