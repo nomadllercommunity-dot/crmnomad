@@ -218,6 +218,8 @@ export default function AddedLeadsScreen() {
         }
       } else if (actionType === 'dead') {
         updateData.status = 'dead';
+      } else if (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType)) {
+        updateData.status = 'follow_up';
       }
 
       const { error: updateError } = await supabase
@@ -236,13 +238,6 @@ export default function AddedLeadsScreen() {
         status: 'completed',
       };
 
-      if (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType)) {
-        const dateValue = nextFollowUpDate.toISOString().split('T')[0];
-        const timeValue = nextFollowUpTime.toTimeString().split(':').slice(0, 2).join(':');
-        followUpData.next_follow_up_date = dateValue;
-        followUpData.next_follow_up_time = timeValue + ':00';
-      }
-
       if (actionType === 'confirmed_advance_paid' && confirmTravelDate) {
         followUpData.itinerary_id = itineraryId;
         followUpData.total_amount = parseFloat(totalAmount);
@@ -260,6 +255,24 @@ export default function AddedLeadsScreen() {
         .insert(followUpData);
 
       if (followUpError) throw followUpError;
+
+      if (['itinerary_sent', 'itinerary_updated', 'follow_up'].includes(actionType)) {
+        const dateValue = nextFollowUpDate.toISOString().split('T')[0];
+        const timeValue = nextFollowUpTime.toTimeString().split(':').slice(0, 2).join(':');
+        const nextFollowUpDateTime = `${dateValue}T${timeValue}:00`;
+
+        const { error: nextFollowUpError } = await supabase
+          .from('follow_ups')
+          .insert({
+            lead_id: currentLead.id,
+            sales_person_id: user?.id,
+            follow_up_date: nextFollowUpDateTime,
+            status: 'pending',
+            remark: `Scheduled follow-up after ${getActionTypeLabel(actionType)}`,
+          });
+
+        if (nextFollowUpError) throw nextFollowUpError;
+      }
 
       const { error: callLogError } = await supabase
         .from('call_logs')
