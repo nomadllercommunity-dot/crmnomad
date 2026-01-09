@@ -1,23 +1,29 @@
 #!/bin/bash
 
-# Android Build Script for Telecom CRM
-
-echo "🚀 Starting Android build process..."
+echo "🚀 Building APK and iOS for Testing..."
 echo ""
 
-# Check if user is logged in
-echo "📝 Checking EAS authentication..."
-if ! npx eas-cli whoami; then
+# Check authentication
+echo "📝 Checking EAS login..."
+if ! npx eas-cli whoami > /dev/null 2>&1; then
     echo "❌ Not logged in to EAS. Please run: npx eas-cli login"
     exit 1
 fi
 
-# Initialize and build in one go - EAS will create project if needed
+echo "✅ Authenticated"
 echo ""
-echo "📦 Building Android APK..."
-echo "This will take several minutes. EAS will create the project if it doesn't exist."
-echo ""
-npx eas-cli build --platform android --profile preview
+
+# Build Android APK
+echo "📱 Building Android APK..."
+npx eas-cli build --platform android --profile preview --wait
 
 echo ""
-echo "✅ Build process complete! Check your EAS dashboard for the download link."
+echo "🍎 Building iOS..."
+npx eas-cli build --platform ios --profile preview --wait
+
+echo ""
+echo "✅ Done! Your builds are ready:"
+echo "   Android: APK available for download"
+echo "   iOS: Build ready for TestFlight upload"
+echo ""
+echo "Check your EAS dashboard: https://expo.dev"
