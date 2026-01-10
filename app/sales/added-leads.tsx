@@ -21,6 +21,14 @@ import { ArrowLeft, Phone, MessageCircle, X, Calendar, Users, MapPin, DollarSign
 import DateTimePickerComponent from '@/components/DateTimePicker';
 import { calendarService } from '@/services/calendar';
 
+interface Itinerary {
+  id: string;
+  name: string;
+  days: number;
+  cost_usd: number;
+  no_of_pax: number;
+}
+
 export default function AddedLeadsScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -51,6 +59,11 @@ export default function AddedLeadsScreen() {
   const [showDeadReasonPicker, setShowDeadReasonPicker] = useState(false);
   const [confirmTravelDate, setConfirmTravelDate] = useState<Date | null>(null);
   const [reminderTime, setReminderTime] = useState<Date | null>(null);
+
+  const [availableItineraries, setAvailableItineraries] = useState<Itinerary[]>([]);
+  const [selectedItinerary, setSelectedItinerary] = useState<Itinerary | null>(null);
+  const [showItineraryPicker, setShowItineraryPicker] = useState(false);
+  const [loadingItineraries, setLoadingItineraries] = useState(false);
 
   const appState = useRef(AppState.currentState);
   const callInitiatedRef = useRef(false);
@@ -126,6 +139,38 @@ export default function AddedLeadsScreen() {
     setPlace('');
     setBudget('');
     setRemarks('');
+    setSelectedItinerary(null);
+    setAvailableItineraries([]);
+  };
+
+  const fetchItinerariesByPlace = async (destination: string) => {
+    if (!destination.trim()) {
+      setAvailableItineraries([]);
+      setSelectedItinerary(null);
+      return;
+    }
+
+    setLoadingItineraries(true);
+    try {
+      const { data, error } = await supabase
+        .from('itineraries')
+        .select('id, name, days, cost_usd, no_of_pax')
+        .ilike('name', `%${destination}%`);
+
+      if (error) throw error;
+      setAvailableItineraries(data || []);
+
+      if (data && data.length === 1) {
+        setSelectedItinerary(data[0]);
+      } else {
+        setSelectedItinerary(null);
+      }
+    } catch (err: any) {
+      console.error('Error fetching itineraries:', err);
+      setAvailableItineraries([]);
+    } finally {
+      setLoadingItineraries(false);
+    }
   };
 
   const handleCall = (phoneNumber: string, lead: Lead) => {
@@ -495,10 +540,60 @@ This is a 7-day advance reminder for the travel date.`;
               <TextInput
                 style={styles.input}
                 value={place}
-                onChangeText={setPlace}
+                onChangeText={(text) => {
+                  setPlace(text);
+                  fetchItinerariesByPlace(text);
+                }}
                 placeholder="Enter destination"
               />
             </View>
+
+            {place.trim() && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Select Itinerary</Text>
+                {loadingItineraries ? (
+                  <View style={[styles.pickerButton, styles.loadingPicker]}>
+                    <ActivityIndicator size="small" color="#8b5cf6" />
+                    <Text style={styles.pickerButtonText}>Loading itineraries...</Text>
+                  </View>
+                ) : availableItineraries.length > 0 ? (
+                  <>
+                    <TouchableOpacity
+                      style={styles.pickerButton}
+                      onPress={() => setShowItineraryPicker(!showItineraryPicker)}
+                    >
+                      <Text style={[styles.pickerButtonText, !selectedItinerary && styles.placeholderText]}>
+                        {selectedItinerary ? selectedItinerary.name : 'Select an itinerary'}
+                      </Text>
+                      <ChevronDown size={20} color="#666" />
+                    </TouchableOpacity>
+                    {showItineraryPicker && (
+                      <View style={styles.pickerOptions}>
+                        {availableItineraries.map((itinerary) => (
+                          <TouchableOpacity
+                            key={itinerary.id}
+                            style={styles.pickerOption}
+                            onPress={() => {
+                              setSelectedItinerary(itinerary);
+                              setShowItineraryPicker(false);
+                            }}
+                          >
+                            <View style={styles.itineraryOptionContent}>
+                              <Text style={styles.pickerOptionText}>{itinerary.name}</Text>
+                              <Text style={styles.itinerarySubtext}>
+                                {itinerary.days} days • USD ${itinerary.cost_usd} • {itinerary.no_of_pax} pax
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  <Text style={styles.noItinerariesText}>No itineraries found for this destination</Text>
+                )}
+              </View>
+            )}
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Expected Budget *</Text>
@@ -958,5 +1053,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#14b8a6',
     paddingVertical: 12,
+  },
+  loadingPicker: {
+    justifyContent: 'center',
+  },
+  noItinerariesText: {
+    fontSize: 14,
+    color: '#999',
+    paddingVertical: 12,
+    fontStyle: 'italic',
+  },
+  itineraryOptionContent: {
+    flex: 1,
+  },
+  itinerarySubtext: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
   },
 });
