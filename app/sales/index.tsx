@@ -3,7 +3,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ListTodo, Clock, Flame, CheckCircle, Briefcase, LogOut, MessageCircle, Bell, UserPlus, Plus, BookOpen } from 'lucide-react-native';
+import { ListTodo, Clock, Flame, CheckCircle, Briefcase, LogOut, MessageCircle, Bell, UserPlus, Plus, BookOpen, Settings } from 'lucide-react-native';
+import NotificationBar from '@/components/NotificationBar';
 
 export default function SalesDashboard() {
   const { user, logout } = useAuth();
@@ -176,12 +177,16 @@ export default function SalesDashboard() {
 
   return (
     <View style={styles.container}>
+      <NotificationBar userId={user?.id || ''} />
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Sales Dashboard</Text>
           <Text style={styles.headerSubtitle}>Welcome, {user?.full_name}</Text>
         </View>
         <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => router.push('/sales/settings')} style={styles.settingsButton}>
+            <Settings size={24} color="#3b82f6" />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/sales/notifications')} style={styles.notificationButton}>
             <Bell size={24} color="#8b5cf6" />
             {unreadNotifications > 0 && (
@@ -275,6 +280,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     alignItems: 'center',
+  },
+  settingsButton: {
+    padding: 8,
   },
   notificationButton: {
     padding: 8,

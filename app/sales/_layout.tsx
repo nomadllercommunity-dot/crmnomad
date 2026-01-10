@@ -39,6 +39,8 @@ export default function SalesLayout() {
       <Stack.Screen name="lead-action" />
       <Stack.Screen name="confirm-lead" />
       <Stack.Screen name="chat" />
+      <Stack.Screen name="settings" />
+      <Stack.Screen name="lead-detail" />
     </Stack>
   );
 }

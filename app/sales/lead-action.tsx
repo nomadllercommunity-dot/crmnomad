@@ -4,8 +4,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Lead } from '@/types';
-import { ArrowLeft, Phone, Calendar, Clock } from 'lucide-react-native';
+import { ArrowLeft, Phone, Calendar, Clock, Package } from 'lucide-react-native';
 import DateTimePickerComponent from '@/components/DateTimePicker';
+import ItinerarySender from '@/components/ItinerarySender';
 
 export default function LeadActionScreen() {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ export default function LeadActionScreen() {
   const [followUpDate, setFollowUpDate] = useState<Date>(new Date());
   const [followUpTime, setFollowUpTime] = useState<Date>(new Date());
   const [followUpHistory, setFollowUpHistory] = useState<any[]>([]);
+  const [showItinerarySection, setShowItinerarySection] = useState(false);
 
   useEffect(() => {
     fetchLead();
@@ -280,6 +282,28 @@ export default function LeadActionScreen() {
           )}
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.itineraryToggle}
+          onPress={() => setShowItinerarySection(!showItinerarySection)}
+        >
+          <Package size={20} color="#3b82f6" />
+          <Text style={styles.itineraryToggleText}>
+            {showItinerarySection ? 'Hide Itinerary Sender' : 'Send Itinerary to Guest'}
+          </Text>
+        </TouchableOpacity>
+
+        {showItinerarySection && lead && (
+          <ItinerarySender
+            leadId={lead.id}
+            guestName={lead.client_name}
+            contactNumber={lead.contact_number}
+            onSent={() => {
+              setShowItinerarySection(false);
+              fetchFollowUpHistory();
+            }}
+          />
+        )}
+
         {followUpHistory.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>Follow-Up History</Text>
@@ -509,5 +533,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     fontStyle: 'italic',
+  },
+  itineraryToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#f0f7ff',
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+    borderRadius: 8,
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  itineraryToggleText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#3b82f6',
   },
 });

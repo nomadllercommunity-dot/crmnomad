@@ -59,6 +59,7 @@ export interface CallLog {
   call_start_time: string;
   call_end_time: string | null;
   call_duration: number;
+  outcome?: 'completed' | 'missed' | 'ended_early' | 'pending';
   created_at: string;
 }
 
@@ -91,8 +92,36 @@ export interface Notification {
   title: string;
   message: string;
   lead_id: string | null;
+  lead_type?: 'normal' | 'urgent' | 'hot';
   is_read: boolean;
   created_at: string;
+}
+
+export interface Itinerary {
+  id: string;
+  name: string;
+  days: number;
+  full_itinerary: string;
+  inclusions: string;
+  exclusions: string;
+  cost_usd: number;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationPreferences {
+  id: string;
+  user_id: string;
+  notifications_enabled: boolean;
+  sound_enabled: boolean;
+  vibration_enabled: boolean;
+  do_not_disturb_enabled: boolean;
+  do_not_disturb_start: string;
+  do_not_disturb_end: string;
+  notification_type_filter: 'all' | 'hot_only' | 'starred_only';
+  created_at: string;
+  updated_at: string;
 }
 
 export interface LeadWithSalesPerson extends Lead {
