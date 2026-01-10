@@ -71,8 +71,8 @@ export default function LoginScreen() {
               <Briefcase size={40} color="#8b5cf6" />
             </View>
           </View>
-          <Text style={styles.title}>TeleCRM</Text>
-          <Text style={styles.subtitle}>Travel Company Management</Text>
+          <Text style={styles.title}>Nomadller Solutions</Text>
+          <Text style={styles.subtitle}>Travel Management System</Text>
 
           <View style={styles.inputContainer}>
           <User size={20} color="#666" style={styles.inputIcon} />

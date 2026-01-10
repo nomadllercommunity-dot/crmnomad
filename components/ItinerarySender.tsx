@@ -95,7 +95,7 @@ ${itinerary.exclusions || 'Travel insurance, visa, personal expenses'}
 Would love to help you plan this amazing journey!
 
 Best regards,
-TeleCRM Team`;
+Nomadller Solutions Team`;
   };
 
   const handleWhatsAppSend = async () => {

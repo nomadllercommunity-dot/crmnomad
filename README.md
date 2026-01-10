@@ -1,4 +1,4 @@
-# TeleCRM - Travel Company Management App
+# Nomadller Solutions - Travel Management System
 
 A comprehensive mobile CRM application built with React Native and Expo for managing travel company leads, sales teams, and customer interactions.
 
@@ -8,17 +8,20 @@ A comprehensive mobile CRM application built with React Native and Expo for mana
 - **Login** - Secure authentication for administrators
 - **Assign New Lead** - Assign leads to sales persons with lead type (normal/urgent/hot), client details, destination, travel dates, and budget
 - **Add Sales Person** - Create and manage sales team members, suspend/activate accounts, view performance metrics
+- **Saved Itinerary** - Create and manage tour packages with detailed itineraries, inclusions, exclusions, and pricing
 - **Analysis Dashboard** - View team performance with metrics like total calls, conversions, and lead statistics
 - **Export Data** - Download lead sheets and confirmation sheets as CSV files
 
 ### Sales Panel
 - **Login** - Secure authentication for sales persons
 - **Allocated Leads** - View assigned leads with call and WhatsApp buttons
+- **Smart Itinerary Selector** - Select and send itineraries directly via WhatsApp with professional message templates
 - **Follow-ups** - Manage scheduled follow-ups with date/time reminders and filter by today's tasks
 - **Hot Leads** - Quick access to high-priority leads
 - **Confirmed Leads** - View confirmed bookings with option to allocate to operations
 - **Allocated to Operations** - Track leads handed over to operations team
 - **Lead Actions** - Make calls, update lead status, schedule follow-ups, and confirm bookings
+- **Lead Detail View** - Complete client information including all follow-up history and financial details
 - **Chat** - Real-time messaging with admin and other team members
 
 ## Technology Stack
@@ -36,8 +39,11 @@ The app uses the following main tables:
 - `leads` - Customer leads with status tracking
 - `follow_ups` - Scheduled follow-up tasks with reminders
 - `confirmations` - Confirmed bookings with payment details
+- `itineraries` - Tour packages with detailed information, pricing, and inclusions
 - `call_logs` - Call history and duration tracking
 - `chat_messages` - Real-time messaging between users
+- `notifications` - Real-time notification system with customizable preferences
+- `reminders` - Travel date reminders with calendar integration
 
 ## Default Login Credentials
 
@@ -87,6 +93,14 @@ The app uses the following main tables:
 - Automatic call logging with duration
 - View call history for each sales person
 - Track last call and current call details
+
+### Itinerary Management
+- Create and save detailed tour packages
+- Automatic destination-based filtering
+- One-click WhatsApp sending with professional templates
+- Pricing in both USD and INR
+- Include full itinerary details, inclusions, and exclusions
+- Track itinerary sends in follow-up history
 
 ### Follow-up System
 - Schedule follow-ups with date and time

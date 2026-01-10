@@ -101,6 +101,7 @@ export interface Itinerary {
   id: string;
   name: string;
   days: number;
+  no_of_pax: number;
   full_itinerary: string;
   inclusions: string;
   exclusions: string;
