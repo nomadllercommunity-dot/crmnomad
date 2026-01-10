@@ -66,7 +66,8 @@ export async function scheduleLocalNotification(
 export async function sendLeadAssignmentNotification(
   salesPersonId: string,
   leadName: string,
-  leadContact: string
+  leadContact: string,
+  leadType: string = 'normal'
 ) {
   await scheduleLocalNotification(
     'New Lead Assigned',
@@ -85,6 +86,7 @@ export async function sendLeadAssignmentNotification(
     title: 'New Lead Assigned',
     message: `You have been assigned a new lead: ${leadName} (${leadContact})`,
     data: { leadName, leadContact },
+    lead_type: leadType,
   });
 }
 
@@ -92,7 +94,8 @@ export async function scheduleFollowUpNotification(
   salesPersonId: string,
   leadName: string,
   followUpTime: Date,
-  notes?: string
+  notes?: string,
+  leadType: string = 'normal'
 ) {
   const now = new Date();
   const triggerSeconds = Math.max(0, Math.floor((followUpTime.getTime() - now.getTime()) / 1000));
@@ -117,7 +120,7 @@ export async function scheduleFollowUpNotification(
     title: 'Follow-up Reminder',
     message: `Follow-up with ${leadName}${notes ? `: ${notes}` : ''}`,
     data: { leadName, followUpTime: followUpTime.toISOString(), notes },
-    scheduled_for: followUpTime.toISOString(),
+    lead_type: leadType,
   });
 }
 

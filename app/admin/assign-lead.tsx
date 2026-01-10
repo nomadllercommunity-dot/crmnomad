@@ -129,13 +129,15 @@ export default function AssignLeadScreen() {
             title: 'New Lead Assigned',
             message: `${formData.clientName} from ${formData.place} has been assigned to you. ${formData.noOfPax} Pax, Budget: ₹${formData.expectedBudget}`,
             lead_id: leadId,
+            lead_type: formData.leadType,
           },
         ]);
 
         await sendLeadAssignmentNotification(
           formData.assignedTo,
           formData.clientName,
-          `${formData.countryCode}${formData.contactNumber}`
+          `${formData.countryCode}${formData.contactNumber}`,
+          formData.leadType
         );
       }
 

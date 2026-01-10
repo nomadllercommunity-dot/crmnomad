@@ -24,7 +24,9 @@ export default function SettingsScreen() {
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
 
   useEffect(() => {
-    fetchPreferences();
+    if (user?.id) {
+      fetchPreferences();
+    }
   }, [user?.id]);
 
   const fetchPreferences = async () => {

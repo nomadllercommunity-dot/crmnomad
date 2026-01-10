@@ -7,6 +7,7 @@ import { Lead } from '@/types';
 import { ArrowLeft, Phone, Calendar, Clock, Package } from 'lucide-react-native';
 import DateTimePickerComponent from '@/components/DateTimePicker';
 import ItinerarySender from '@/components/ItinerarySender';
+import { scheduleFollowUpNotification } from '@/services/notifications';
 
 export default function LeadActionScreen() {
   const { user } = useAuth();
@@ -143,6 +144,11 @@ export default function LeadActionScreen() {
             remark: remark,
           },
         ]);
+
+        const followUpFullDateTime = new Date(followUpDateTime);
+        if (user?.id && lead?.client_name) {
+          await scheduleFollowUpNotification(user.id, lead.client_name, followUpFullDateTime, remark);
+        }
 
         await supabase
           .from('leads')
