@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Lead } from '@/types';
+import { Lead, Itinerary } from '@/types';
 import { ArrowLeft, Calendar, ChevronDown } from 'lucide-react-native';
 import DateTimePickerComponent from '@/components/DateTimePicker';
 
@@ -15,6 +15,9 @@ export default function ConfirmLeadScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [lead, setLead] = useState<Lead | null>(null);
   const [showPaymentMode, setShowPaymentMode] = useState(false);
+  const [itineraries, setItineraries] = useState<Itinerary[]>([]);
+  const [showItineraryDropdown, setShowItineraryDropdown] = useState(false);
+  const [selectedItinerary, setSelectedItinerary] = useState<Itinerary | null>(null);
 
   const [formData, setFormData] = useState({
     totalAmount: '',
@@ -30,7 +33,22 @@ export default function ConfirmLeadScreen() {
 
   useEffect(() => {
     fetchLead();
+    fetchItineraries();
   }, [leadId]);
+
+  const fetchItineraries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('itineraries')
+        .select('*')
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setItineraries(data || []);
+    } catch (err: any) {
+      console.error('Error fetching itineraries:', err);
+    }
+  };
 
   const fetchLead = async () => {
     try {
@@ -52,7 +70,7 @@ export default function ConfirmLeadScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.totalAmount || !formData.advanceAmount || !formData.itineraryId || !formData.paymentMode) {
+    if (!formData.totalAmount || !formData.advanceAmount || !selectedItinerary || !formData.paymentMode) {
       Alert.alert('Error', 'Please fill all required fields');
       return;
     }
@@ -76,7 +94,7 @@ export default function ConfirmLeadScreen() {
           total_amount: parseFloat(formData.totalAmount),
           advance_amount: parseFloat(formData.advanceAmount),
           transaction_id: formData.transactionId,
-          itinerary_id: formData.itineraryId,
+          itinerary_id: selectedItinerary.id,
           travel_date: formData.travelDate,
           remark: formData.remark || null,
           confirmed_by: user?.id,
@@ -238,14 +256,44 @@ export default function ConfirmLeadScreen() {
           </>
         )}
 
-        <Text style={styles.label}>Itinerary ID *</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.itineraryId}
-          onChangeText={(text) => setFormData({ ...formData, itineraryId: text })}
-          placeholder="Enter itinerary reference ID"
-          returnKeyType="next"
-        />
+        <Text style={styles.label}>Select Itinerary *</Text>
+        <View>
+          <TouchableOpacity
+            style={styles.dropdown}
+            onPress={() => setShowItineraryDropdown(!showItineraryDropdown)}
+          >
+            <Text style={selectedItinerary ? styles.dropdownText : styles.dropdownPlaceholder}>
+              {selectedItinerary ? selectedItinerary.name : 'Select an itinerary'}
+            </Text>
+            <ChevronDown size={20} color="#666" />
+          </TouchableOpacity>
+
+          {showItineraryDropdown && (
+            <View style={styles.dropdownList}>
+              {itineraries.length === 0 ? (
+                <View style={styles.dropdownItem}>
+                  <Text style={styles.dropdownItemText}>No itineraries available</Text>
+                </View>
+              ) : (
+                itineraries.map((itinerary) => (
+                  <TouchableOpacity
+                    key={itinerary.id}
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setSelectedItinerary(itinerary);
+                      setShowItineraryDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownItemTitle}>{itinerary.name}</Text>
+                    <Text style={styles.dropdownItemSubtitle}>
+                      {itinerary.days} Days • ${itinerary.cost_usd.toFixed(2)}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          )}
+        </View>
 
         <Text style={styles.label}>Remark</Text>
         <TextInput
@@ -403,6 +451,16 @@ const styles = StyleSheet.create({
   dropdownItemText: {
     fontSize: 16,
     color: '#1a1a1a',
+  },
+  dropdownItemTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  dropdownItemSubtitle: {
+    fontSize: 13,
+    color: '#666',
   },
   accountDetails: {
     backgroundColor: '#e0f2fe',
