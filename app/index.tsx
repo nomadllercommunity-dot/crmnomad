@@ -1,9 +1,10 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { loginUser } from '@/services/auth';
-import { Lock, User } from 'lucide-react-native';
+import { Lock, User, Briefcase } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -59,12 +60,21 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>TeleCRM</Text>
-        <Text style={styles.subtitle}>Travel Company Management</Text>
+    <LinearGradient colors={['#8b5cf6', '#3b82f6', '#10b981']} style={styles.gradient}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <View style={styles.card}>
+          <View style={styles.logoContainer}>
+            <View style={styles.logo}>
+              <Briefcase size={40} color="#8b5cf6" />
+            </View>
+          </View>
+          <Text style={styles.title}>TeleCRM</Text>
+          <Text style={styles.subtitle}>Travel Company Management</Text>
 
-        <View style={styles.inputContainer}>
+          <View style={styles.inputContainer}>
           <User size={20} color="#666" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
@@ -102,14 +112,17 @@ export default function LoginScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -118,11 +131,28 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 24,
     padding: 32,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: '#f5f3ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 5,
   },
@@ -131,10 +161,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1a1a1a',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
     textAlign: 'center',
     marginBottom: 32,
@@ -142,32 +172,38 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#e5e5e5',
+    borderRadius: 12,
     marginBottom: 16,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     backgroundColor: '#fafafa',
   },
   inputIcon: {
-    marginRight: 8,
+    marginRight: 12,
   },
   input: {
     flex: 1,
-    height: 48,
+    height: 52,
     fontSize: 16,
     color: '#1a1a1a',
   },
   button: {
-    backgroundColor: '#2563eb',
-    height: 48,
-    borderRadius: 8,
+    backgroundColor: '#8b5cf6',
+    height: 52,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   buttonDisabled: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: '#c4b5fd',
+    shadowOpacity: 0.1,
   },
   buttonText: {
     color: '#fff',
