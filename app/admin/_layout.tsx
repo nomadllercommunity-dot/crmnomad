@@ -12,6 +12,7 @@ export default function AdminLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="assign-lead" />
       <Stack.Screen name="add-sales-person" />
+      <Stack.Screen name="manage-destinations" />
       <Stack.Screen name="analysis" />
       <Stack.Screen name="export" />
       <Stack.Screen name="sales-person-details" />

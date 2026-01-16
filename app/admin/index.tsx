@@ -3,7 +3,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { UserPlus, ListPlus, BarChart3, Download, LogOut, MessageCircle, Bell, BookOpen } from 'lucide-react-native';
+import { UserPlus, ListPlus, BarChart3, Download, LogOut, MessageCircle, Bell, BookOpen, Map } from 'lucide-react-native';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -75,6 +75,13 @@ export default function AdminDashboard() {
       color: '#10b981',
     },
     {
+      title: 'Manage Destinations',
+      description: 'Add and manage tour destinations',
+      icon: Map,
+      route: '/admin/manage-destinations',
+      color: '#f59e0b',
+    },
+    {
       title: 'Saved Itinerary',
       description: 'Create and manage tour packages',
       icon: BookOpen,
@@ -86,7 +93,7 @@ export default function AdminDashboard() {
       description: 'View team performance metrics',
       icon: BarChart3,
       route: '/admin/analysis',
-      color: '#f59e0b',
+      color: '#6366f1',
     },
     {
       title: 'Export Data',
