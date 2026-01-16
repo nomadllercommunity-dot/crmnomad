@@ -16,18 +16,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Lead } from '@/types';
-import { ArrowLeft, Phone, MessageCircle, X, Calendar, Users, MapPin, DollarSign, ChevronDown } from 'lucide-react-native';
+import { Lead, Destination, Itinerary } from '@/types';
+import { ArrowLeft, Phone, MessageCircle, X, Calendar, Users, MapPin, DollarSign, ChevronDown, Filter, Search } from 'lucide-react-native';
 import DateTimePickerComponent from '@/components/DateTimePicker';
 import { calendarService } from '@/services/calendar';
-
-interface Itinerary {
-  id: string;
-  name: string;
-  days: number;
-  cost_usd: number;
-  no_of_pax: number;
-}
 
 export default function AddedLeadsScreen() {
   const { user } = useAuth();
@@ -61,9 +53,22 @@ export default function AddedLeadsScreen() {
   const [reminderTime, setReminderTime] = useState<Date | null>(null);
 
   const [availableItineraries, setAvailableItineraries] = useState<Itinerary[]>([]);
+  const [filteredItineraries, setFilteredItineraries] = useState<Itinerary[]>([]);
   const [selectedItinerary, setSelectedItinerary] = useState<Itinerary | null>(null);
   const [showItineraryPicker, setShowItineraryPicker] = useState(false);
   const [loadingItineraries, setLoadingItineraries] = useState(false);
+
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
+  const [showDestinationPicker, setShowDestinationPicker] = useState(false);
+  const [loadingDestinations, setLoadingDestinations] = useState(false);
+
+  const [filterPax, setFilterPax] = useState('');
+  const [filterDays, setFilterDays] = useState('');
+  const [filterTransportMode, setFilterTransportMode] = useState('');
+  const [showTransportPicker, setShowTransportPicker] = useState(false);
+  const [itinerarySearchText, setItinerarySearchText] = useState('');
+  const [showItinerarySection, setShowItinerarySection] = useState(false);
 
   const appState = useRef(AppState.currentState);
   const callInitiatedRef = useRef(false);
@@ -87,8 +92,15 @@ export default function AddedLeadsScreen() {
     'Other',
   ];
 
+  const transportModes = [
+    { label: 'Driver with Cab', value: 'driver_with_cab' },
+    { label: 'Self Drive Cab', value: 'self_drive_cab' },
+    { label: 'Self Drive Scooter', value: 'self_drive_scooter' },
+  ];
+
   useEffect(() => {
     fetchLeads();
+    fetchDestinations();
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
@@ -131,6 +143,24 @@ export default function AddedLeadsScreen() {
     }
   };
 
+  const fetchDestinations = async () => {
+    setLoadingDestinations(true);
+    try {
+      const { data, error } = await supabase
+        .from('destinations')
+        .select('*')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      setDestinations(data || []);
+    } catch (err: any) {
+      console.error('Error fetching destinations:', err);
+    } finally {
+      setLoadingDestinations(false);
+    }
+  };
+
   const resetForm = () => {
     setClientName('');
     setTravelDate(null);
@@ -141,11 +171,19 @@ export default function AddedLeadsScreen() {
     setRemarks('');
     setSelectedItinerary(null);
     setAvailableItineraries([]);
+    setFilteredItineraries([]);
+    setSelectedDestination(null);
+    setFilterPax('');
+    setFilterDays('');
+    setFilterTransportMode('');
+    setItinerarySearchText('');
+    setShowItinerarySection(false);
   };
 
-  const fetchItinerariesByPlace = async (destination: string) => {
-    if (!destination.trim()) {
+  const fetchItinerariesByDestination = async (destinationId: string) => {
+    if (!destinationId) {
       setAvailableItineraries([]);
+      setFilteredItineraries([]);
       setSelectedItinerary(null);
       return;
     }
@@ -154,23 +192,67 @@ export default function AddedLeadsScreen() {
     try {
       const { data, error } = await supabase
         .from('itineraries')
-        .select('id, name, days, cost_usd, no_of_pax')
-        .ilike('name', `%${destination}%`);
+        .select('*')
+        .eq('destination_id', destinationId);
 
       if (error) throw error;
       setAvailableItineraries(data || []);
-
-      if (data && data.length === 1) {
-        setSelectedItinerary(data[0]);
-      } else {
-        setSelectedItinerary(null);
-      }
+      setFilteredItineraries(data || []);
     } catch (err: any) {
       console.error('Error fetching itineraries:', err);
       setAvailableItineraries([]);
+      setFilteredItineraries([]);
     } finally {
       setLoadingItineraries(false);
     }
+  };
+
+  useEffect(() => {
+    applyItineraryFilters();
+  }, [filterPax, filterDays, filterTransportMode, itinerarySearchText, availableItineraries]);
+
+  const applyItineraryFilters = () => {
+    let filtered = [...availableItineraries];
+
+    if (filterPax) {
+      const paxNum = parseInt(filterPax);
+      filtered = filtered.filter((it) => it.no_of_pax >= paxNum);
+    }
+
+    if (filterDays) {
+      const daysNum = parseInt(filterDays);
+      filtered = filtered.filter((it) => it.days === daysNum);
+    }
+
+    if (filterTransportMode) {
+      filtered = filtered.filter((it) => it.mode_of_transport === filterTransportMode);
+    }
+
+    if (itinerarySearchText.trim()) {
+      const searchLower = itinerarySearchText.toLowerCase();
+      filtered = filtered.filter((it) =>
+        it.name.toLowerCase().includes(searchLower)
+      );
+    }
+
+    setFilteredItineraries(filtered);
+  };
+
+  const handleDestinationChange = (destination: Destination) => {
+    setSelectedDestination(destination);
+    setPlace(destination.name);
+    setShowDestinationPicker(false);
+    setShowItinerarySection(true);
+    setSelectedItinerary(null);
+    setFilterPax('');
+    setFilterDays('');
+    setFilterTransportMode('');
+    setItinerarySearchText('');
+    fetchItinerariesByDestination(destination.id);
+  };
+
+  const getTransportModeLabel = (value: string) => {
+    return transportModes.find((mode) => mode.value === value)?.label || value;
   };
 
   const handleCall = (phoneNumber: string, lead: Lead) => {
@@ -193,9 +275,47 @@ export default function AddedLeadsScreen() {
     });
   };
 
+  const handleWhatsAppWithItinerary = () => {
+    if (!currentLead?.contact_number || !selectedItinerary) {
+      Alert.alert('Error', 'Please select an itinerary and ensure contact number exists');
+      return;
+    }
+
+    const cleanNumber = currentLead.contact_number.replace(/[^\d+]/g, '');
+    const usdRate = 84;
+    const costINR = selectedItinerary.cost_inr || selectedItinerary.cost_usd * usdRate;
+
+    const message = `Hi ${clientName || 'there'}! 👋
+
+Here's your customized ${selectedDestination?.name || place} itinerary:
+
+*${selectedItinerary.name}*
+📅 Duration: ${selectedItinerary.days} days
+👥 Suitable for: ${selectedItinerary.no_of_pax} pax
+🚗 Transport: ${getTransportModeLabel(selectedItinerary.mode_of_transport)}
+💰 Cost: $${selectedItinerary.cost_usd} USD (₹${costINR.toFixed(0)} INR)
+
+*Overview:*
+${selectedItinerary.full_itinerary}
+
+*What's Included:*
+${selectedItinerary.inclusions}
+
+*What's Not Included:*
+${selectedItinerary.exclusions}
+
+${selectedItinerary.important_notes ? `*Important Notes:*\n${selectedItinerary.important_notes}\n\n` : ''}${selectedItinerary.disclaimers ? `*Disclaimers:*\n${selectedItinerary.disclaimers}\n\n` : ''}Let me know if you'd like any modifications or have questions! 😊`;
+
+    const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
+    Linking.openURL(url).catch((err) => {
+      console.error('Error opening WhatsApp:', err);
+      Alert.alert('Error', 'Could not open WhatsApp. Please try again.');
+    });
+  };
+
   const validateProfile = (): string | null => {
     if (!clientName.trim()) return 'Client name is required';
-    if (!place.trim()) return 'Destination place is required';
+    if (!selectedDestination) return 'Please select a destination';
     if (!noOfPax || parseInt(noOfPax) < 1) return 'Number of persons must be at least 1';
     if (!budget || parseFloat(budget) <= 0) return 'Budget must be greater than 0';
     if (!travelDate && !travelMonth.trim()) return 'Please provide either travel date or month';
@@ -241,6 +361,7 @@ export default function AddedLeadsScreen() {
       const updateData: any = {
         client_name: clientName.trim(),
         place: place.trim(),
+        destination_id: selectedDestination?.id || null,
         no_of_pax: parseInt(noOfPax),
         expected_budget: parseFloat(budget),
         remark: remarks.trim() || null,
@@ -537,61 +658,196 @@ This is a 7-day advance reminder for the travel date.`;
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Destination Place *</Text>
-              <TextInput
-                style={styles.input}
-                value={place}
-                onChangeText={(text) => {
-                  setPlace(text);
-                  fetchItinerariesByPlace(text);
-                }}
-                placeholder="Enter destination"
-              />
+              {loadingDestinations ? (
+                <View style={[styles.pickerButton, styles.loadingPicker]}>
+                  <ActivityIndicator size="small" color="#14b8a6" />
+                  <Text style={styles.pickerButtonText}>Loading destinations...</Text>
+                </View>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={styles.pickerButton}
+                    onPress={() => setShowDestinationPicker(!showDestinationPicker)}
+                  >
+                    <Text style={[styles.pickerButtonText, !selectedDestination && styles.placeholderText]}>
+                      {selectedDestination ? selectedDestination.name : 'Select a destination'}
+                    </Text>
+                    <ChevronDown size={20} color="#666" />
+                  </TouchableOpacity>
+                  {showDestinationPicker && (
+                    <View style={styles.pickerOptions}>
+                      {destinations.map((destination) => (
+                        <TouchableOpacity
+                          key={destination.id}
+                          style={styles.pickerOption}
+                          onPress={() => handleDestinationChange(destination)}
+                        >
+                          <Text style={styles.pickerOptionText}>{destination.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
             </View>
 
-            {place.trim() && (
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Select Itinerary</Text>
-                {loadingItineraries ? (
-                  <View style={[styles.pickerButton, styles.loadingPicker]}>
-                    <ActivityIndicator size="small" color="#8b5cf6" />
-                    <Text style={styles.pickerButtonText}>Loading itineraries...</Text>
+            {showItinerarySection && (
+              <View style={styles.itinerarySectionContainer}>
+                <View style={styles.itinerarySectionHeader}>
+                  <MapPin size={20} color="#14b8a6" />
+                  <Text style={styles.itinerarySectionTitle}>Select Itinerary (Optional)</Text>
+                </View>
+                <Text style={styles.itinerarySectionSubtitle}>
+                  Choose an itinerary to send via WhatsApp, or skip this step
+                </Text>
+
+                <View style={styles.filtersContainer}>
+                  <Text style={styles.filtersLabel}>Filter Itineraries:</Text>
+
+                  <View style={styles.filterRow}>
+                    <View style={[styles.filterItem, styles.filterItemHalf]}>
+                      <Text style={styles.filterItemLabel}>Passengers</Text>
+                      <TextInput
+                        style={styles.filterInput}
+                        value={filterPax}
+                        onChangeText={setFilterPax}
+                        placeholder="Min pax"
+                        keyboardType="numeric"
+                      />
+                    </View>
+
+                    <View style={[styles.filterItem, styles.filterItemHalf]}>
+                      <Text style={styles.filterItemLabel}>Days</Text>
+                      <TextInput
+                        style={styles.filterInput}
+                        value={filterDays}
+                        onChangeText={setFilterDays}
+                        placeholder="No. of days"
+                        keyboardType="numeric"
+                      />
+                    </View>
                   </View>
-                ) : availableItineraries.length > 0 ? (
-                  <>
+
+                  <View style={styles.filterItem}>
+                    <Text style={styles.filterItemLabel}>Transport Mode</Text>
                     <TouchableOpacity
-                      style={styles.pickerButton}
-                      onPress={() => setShowItineraryPicker(!showItineraryPicker)}
+                      style={styles.filterInput}
+                      onPress={() => setShowTransportPicker(!showTransportPicker)}
                     >
-                      <Text style={[styles.pickerButtonText, !selectedItinerary && styles.placeholderText]}>
-                        {selectedItinerary ? selectedItinerary.name : 'Select an itinerary'}
+                      <Text style={[styles.pickerButtonText, !filterTransportMode && styles.placeholderText]}>
+                        {filterTransportMode ? getTransportModeLabel(filterTransportMode) : 'All transport modes'}
                       </Text>
-                      <ChevronDown size={20} color="#666" />
+                      <ChevronDown size={16} color="#666" />
                     </TouchableOpacity>
-                    {showItineraryPicker && (
+                    {showTransportPicker && (
                       <View style={styles.pickerOptions}>
-                        {availableItineraries.map((itinerary) => (
+                        <TouchableOpacity
+                          style={styles.pickerOption}
+                          onPress={() => {
+                            setFilterTransportMode('');
+                            setShowTransportPicker(false);
+                          }}
+                        >
+                          <Text style={styles.pickerOptionText}>All transport modes</Text>
+                        </TouchableOpacity>
+                        {transportModes.map((mode) => (
                           <TouchableOpacity
-                            key={itinerary.id}
+                            key={mode.value}
                             style={styles.pickerOption}
                             onPress={() => {
-                              setSelectedItinerary(itinerary);
-                              setShowItineraryPicker(false);
+                              setFilterTransportMode(mode.value);
+                              setShowTransportPicker(false);
                             }}
                           >
-                            <View style={styles.itineraryOptionContent}>
-                              <Text style={styles.pickerOptionText}>{itinerary.name}</Text>
-                              <Text style={styles.itinerarySubtext}>
-                                {itinerary.days} days • USD ${itinerary.cost_usd} • {itinerary.no_of_pax} pax
-                              </Text>
-                            </View>
+                            <Text style={styles.pickerOptionText}>{mode.label}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
                     )}
+                  </View>
+
+                  <View style={styles.filterItem}>
+                    <Text style={styles.filterItemLabel}>Search by Name</Text>
+                    <View style={styles.searchInputContainer}>
+                      <Search size={18} color="#999" />
+                      <TextInput
+                        style={styles.searchInput}
+                        value={itinerarySearchText}
+                        onChangeText={setItinerarySearchText}
+                        placeholder="Search itineraries..."
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                {loadingItineraries ? (
+                  <View style={styles.loadingItinerariesContainer}>
+                    <ActivityIndicator size="small" color="#14b8a6" />
+                    <Text style={styles.loadingItinerariesText}>Loading itineraries...</Text>
+                  </View>
+                ) : filteredItineraries.length > 0 ? (
+                  <>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Choose Itinerary</Text>
+                      <TouchableOpacity
+                        style={styles.pickerButton}
+                        onPress={() => setShowItineraryPicker(!showItineraryPicker)}
+                      >
+                        <Text style={[styles.pickerButtonText, !selectedItinerary && styles.placeholderText]}>
+                          {selectedItinerary ? selectedItinerary.name : `Select from ${filteredItineraries.length} itineraries`}
+                        </Text>
+                        <ChevronDown size={20} color="#666" />
+                      </TouchableOpacity>
+                      {showItineraryPicker && (
+                        <ScrollView style={styles.pickerOptionsScrollable}>
+                          <View style={styles.pickerOptions}>
+                            {filteredItineraries.map((itinerary) => (
+                              <TouchableOpacity
+                                key={itinerary.id}
+                                style={styles.pickerOption}
+                                onPress={() => {
+                                  setSelectedItinerary(itinerary);
+                                  setShowItineraryPicker(false);
+                                }}
+                              >
+                                <View style={styles.itineraryOptionContent}>
+                                  <Text style={styles.pickerOptionText}>{itinerary.name}</Text>
+                                  <Text style={styles.itinerarySubtext}>
+                                    {itinerary.days} days • {itinerary.no_of_pax} pax • {getTransportModeLabel(itinerary.mode_of_transport)}
+                                  </Text>
+                                  <Text style={styles.itineraryCost}>
+                                    ${itinerary.cost_usd} USD • ₹{itinerary.cost_inr || itinerary.cost_usd * 84} INR
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </ScrollView>
+                      )}
+                    </View>
+
+                    {selectedItinerary && (
+                      <TouchableOpacity
+                        style={styles.whatsappItineraryButton}
+                        onPress={handleWhatsAppWithItinerary}
+                      >
+                        <MessageCircle size={20} color="#fff" />
+                        <Text style={styles.whatsappItineraryButtonText}>Send Itinerary via WhatsApp</Text>
+                      </TouchableOpacity>
+                    )}
                   </>
                 ) : (
-                  <Text style={styles.noItinerariesText}>No itineraries found for this destination</Text>
+                  <Text style={styles.noItinerariesText}>
+                    No itineraries match your filters. Try adjusting your search.
+                  </Text>
                 )}
+
+                <TouchableOpacity
+                  style={styles.skipItineraryButton}
+                  onPress={() => setShowItinerarySection(false)}
+                >
+                  <Text style={styles.skipItineraryButtonText}>Skip Itinerary Selection</Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -1070,5 +1326,132 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 4,
+  },
+  itineraryCost: {
+    fontSize: 12,
+    color: '#14b8a6',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  itinerarySectionContainer: {
+    backgroundColor: '#f0fdfa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#99f6e4',
+  },
+  itinerarySectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  itinerarySectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0f766e',
+  },
+  itinerarySectionSubtitle: {
+    fontSize: 13,
+    color: '#5eead4',
+    marginBottom: 16,
+  },
+  filtersContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  filtersLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  filterItem: {
+    marginBottom: 12,
+  },
+  filterItemHalf: {
+    flex: 1,
+  },
+  filterItemLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 6,
+  },
+  filterInput: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    backgroundColor: '#f9f9f9',
+    fontSize: 14,
+    color: '#333',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    backgroundColor: '#f9f9f9',
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+  },
+  loadingItinerariesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 12,
+  },
+  loadingItinerariesText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  pickerOptionsScrollable: {
+    maxHeight: 200,
+  },
+  whatsappItineraryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#25D366',
+    paddingVertical: 14,
+    borderRadius: 8,
+    gap: 8,
+    marginTop: 12,
+  },
+  whatsappItineraryButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  skipItineraryButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  skipItineraryButtonText: {
+    fontSize: 14,
+    color: '#14b8a6',
+    fontWeight: '600',
   },
 });

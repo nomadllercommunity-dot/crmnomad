@@ -17,6 +17,7 @@ export interface Lead {
   contact_number: string | null;
   no_of_pax: number;
   place: string;
+  destination_id: string | null;
   travel_date: string | null;
   travel_month: string | null;
   expected_budget: number;
@@ -106,7 +107,20 @@ export interface Itinerary {
   inclusions: string;
   exclusions: string;
   cost_usd: number;
+  cost_inr: number;
+  destination_id: string | null;
+  mode_of_transport: 'driver_with_cab' | 'self_drive_cab' | 'self_drive_scooter';
+  important_notes: string;
+  disclaimers: string;
   created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Destination {
+  id: string;
+  name: string;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
