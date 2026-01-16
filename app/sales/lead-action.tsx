@@ -2,7 +2,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Activi
 import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { supabase, setUserContext } from '@/lib/supabase';
 import { Lead, Itinerary } from '@/types';
 import { ArrowLeft, Phone, Calendar, Clock, Package, ChevronDown, Search, Check } from 'lucide-react-native';
 import DateTimePickerComponent from '@/components/DateTimePicker';
@@ -159,6 +159,10 @@ export default function LeadActionScreen() {
     const duration = Math.floor((callEndTime.getTime() - callStartTime.getTime()) / 1000);
 
     try {
+      if (user?.id && user?.role) {
+        await setUserContext(user.id, user.role);
+      }
+
       await supabase.from('call_logs').insert([
         {
           lead_id: leadId,
