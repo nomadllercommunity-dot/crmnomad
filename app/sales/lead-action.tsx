@@ -384,6 +384,7 @@ TeleCRM Team`;
             { value: 'itinerary_created', label: 'Itinerary Created' },
             { value: 'itinerary_updated', label: 'Itinerary Updated' },
             { value: 'follow_up', label: 'Follow Up' },
+            { value: 'almost_confirmed', label: 'Almost Confirm' },
             { value: 'advance_paid_confirmed', label: 'Advance Paid & Confirmed' },
             { value: 'dead', label: 'Dead' },
           ].map((option) => (

@@ -13,6 +13,7 @@ export default function SalesDashboard() {
     addedLeads: 0,
     allocated: 0,
     followUps: 0,
+    almostConfirmed: 0,
     hot: 0,
     confirmed: 0,
     operations: 0,
@@ -88,10 +89,20 @@ export default function SalesDashboard() {
         .eq('assigned_to', user?.id)
         .eq('status', 'allocated_to_operations');
 
+      const { data: followUpData } = await supabase
+        .from('follow_ups')
+        .select('lead_id', { count: 'exact' })
+        .eq('sales_person_id', user?.id)
+        .eq('update_type', 'almost_confirmed');
+
+      const almostConfirmedLeadIds = [...new Set((followUpData || []).map((f: any) => f.lead_id))];
+      const almostConfirmedCount = almostConfirmedLeadIds.length;
+
       setCounts({
         addedLeads: addedLeadsCount || 0,
         allocated: allocatedCount || 0,
         followUps: followUpsCount || 0,
+        almostConfirmed: almostConfirmedCount || 0,
         hot: hotCount || 0,
         confirmed: confirmedCount || 0,
         operations: operationsCount || 0,
@@ -141,6 +152,13 @@ export default function SalesDashboard() {
       icon: Clock,
       route: '/sales/follow-ups',
       color: '#f59e0b',
+    },
+    {
+      title: 'Almost Confirmed',
+      count: counts.almostConfirmed,
+      icon: CheckCircle,
+      route: '/sales/almost-confirmed-leads',
+      color: '#06b6d4',
     },
     {
       title: 'Hot Leads',

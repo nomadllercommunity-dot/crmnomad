@@ -35,7 +35,7 @@ export interface FollowUp {
   sales_person_id: string;
   follow_up_date: string;
   status: 'pending' | 'completed' | 'cancelled';
-  update_type: 'itinerary_created' | 'itinerary_updated' | 'follow_up' | 'advance_paid_confirmed' | 'dead' | null;
+  update_type: 'itinerary_created' | 'itinerary_updated' | 'follow_up' | 'advance_paid_confirmed' | 'almost_confirmed' | 'dead' | null;
   remark: string | null;
   created_at: string;
 }
