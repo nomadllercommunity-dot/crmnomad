@@ -117,11 +117,15 @@ export default function ManageDestinationsScreen() {
 
   const performDelete = async (id: string) => {
     try {
-      if (user?.id) {
-        await setUserContext(user.id);
+      if (!user?.id) {
+        Alert.alert('Error', 'User not authenticated');
+        return;
       }
 
-      const { error } = await supabase.from('destinations').delete().eq('id', id);
+      const { data, error } = await supabase.rpc('delete_destination', {
+        p_user_id: user.id,
+        p_destination_id: id,
+      });
 
       if (error) throw error;
 
