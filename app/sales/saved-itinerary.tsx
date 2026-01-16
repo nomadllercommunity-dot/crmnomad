@@ -11,7 +11,7 @@ import {
   Clipboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Plus, Copy, Edit, Search, Filter, X, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, Plus, Copy, Edit, Search, Filter, X } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -195,31 +195,6 @@ export default function SavedItineraryScreen() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleDelete = async (id: string) => {
-    Alert.alert(
-      'Delete Itinerary',
-      'Are you sure you want to delete this itinerary?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase.from('itineraries').delete().eq('id', id);
-              if (error) throw error;
-              fetchItineraries();
-              Alert.alert('Success', 'Itinerary deleted successfully');
-            } catch (error) {
-              console.error('Error deleting itinerary:', error);
-              Alert.alert('Error', 'Failed to delete itinerary');
-            }
-          },
-        },
-      ]
-    );
   };
 
   const copyPackage = (itinerary: Itinerary) => {
@@ -535,21 +510,13 @@ ${itinerary.exclusions}
                     ₹{(itinerary.cost_usd * (exchangeRate + 2)).toFixed(2)}
                   </Text>
                 </View>
-                <View style={styles.costActions}>
-                  <TouchableOpacity
-                    style={styles.copyButton}
-                    onPress={() => copyPackage(itinerary)}
-                  >
-                    <Copy size={20} color="#fff" />
-                    <Text style={styles.copyButtonText}>Copy</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDelete(itinerary.id)}
-                  >
-                    <Trash2 size={20} color="#fff" />
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                  style={styles.copyButton}
+                  onPress={() => copyPackage(itinerary)}
+                >
+                  <Copy size={20} color="#fff" />
+                  <Text style={styles.copyButtonText}>Copy Package</Text>
+                </TouchableOpacity>
               </View>
             </View>
           ))
@@ -830,16 +797,12 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
-  costActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
   copyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: '#34C759',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
   },
@@ -847,13 +810,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
-  },
-  deleteButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FF3B30',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
   },
 });

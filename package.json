@@ -21,7 +21,6 @@
     "expo-blur": "~15.0.8",
     "expo-calendar": "~15.0.5",
     "expo-camera": "~17.0.10",
-    "expo-clipboard": "^8.0.8",
     "expo-constants": "~18.0.12",
     "expo-crypto": "^15.0.8",
     "expo-file-system": "^19.0.21",

@@ -8,15 +8,25 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Modal,
+  Clipboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Plus, Trash2, Search, Filter, X, ChevronDown, Check, Copy, Edit } from 'lucide-react-native';
+import { ArrowLeft, Plus, Copy, Trash2, Edit, Search, Filter, X } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
-import { setUserContext } from '@/lib/auth-context';
 import { useAuth } from '@/contexts/AuthContext';
-import { Destination, Itinerary } from '@/types';
-import * as Clipboard from 'expo-clipboard';
+
+interface Itinerary {
+  id: string;
+  name: string;
+  days: number;
+  no_of_pax: number;
+  full_itinerary: string;
+  inclusions: string;
+  exclusions: string;
+  cost_usd: number;
+  created_by: string;
+  created_at: string;
+}
 
 export default function SavedItineraryScreen() {
   const router = useRouter();
@@ -27,54 +37,31 @@ export default function SavedItineraryScreen() {
   const [filteredItineraries, setFilteredItineraries] = useState<Itinerary[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [exchangeRate, setExchangeRate] = useState(83);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filterDays, setFilterDays] = useState('');
   const [filterPax, setFilterPax] = useState('');
-  const [filterTransport, setFilterTransport] = useState('');
-  const [destinations, setDestinations] = useState<Destination[]>([]);
-  const [showDestinationPicker, setShowDestinationPicker] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Form state
   const [formData, setFormData] = useState({
-    destination_id: '',
-    destination_name: '',
     name: '',
     days: '1',
     no_of_pax: '2',
     full_itinerary: '',
-
-    inclusions_driver: '',
-    exclusions_driver: '',
-    cost_usd_driver: '',
-
-    inclusions_self_drive_cab: '',
-    exclusions_self_drive_cab: '',
-    cost_usd_self_drive_cab: '',
-
-    inclusions_self_drive_scooter: '',
-    exclusions_self_drive_scooter: '',
-    cost_usd_self_drive_scooter: '',
-
-    important_notes: '',
-    disclaimers: '',
+    inclusions: '',
+    exclusions: '',
+    cost_usd: '',
   });
 
-  const transportModes = [
-    { label: 'Driver with Cab', value: 'driver_with_cab' },
-    { label: 'Self Drive Cab', value: 'self_drive_cab' },
-    { label: 'Self Drive Scooter', value: 'self_drive_scooter' },
-  ];
-
   useEffect(() => {
-    fetchDestinations();
     fetchItineraries();
     fetchExchangeRate();
   }, []);
 
   useEffect(() => {
     filterItineraries();
-  }, [itineraries, searchQuery, filterDays, filterPax, filterTransport]);
+  }, [itineraries, searchQuery, filterDays, filterPax]);
 
   const filterItineraries = () => {
     let filtered = [...itineraries];
@@ -93,10 +80,6 @@ export default function SavedItineraryScreen() {
       filtered = filtered.filter((itinerary) => itinerary.no_of_pax === parseInt(filterPax));
     }
 
-    if (filterTransport) {
-      filtered = filtered.filter((itinerary) => itinerary.mode_of_transport === filterTransport);
-    }
-
     setFilteredItineraries(filtered);
   };
 
@@ -104,26 +87,6 @@ export default function SavedItineraryScreen() {
     setSearchQuery('');
     setFilterDays('');
     setFilterPax('');
-    setFilterTransport('');
-  };
-
-  const fetchDestinations = async () => {
-    if (user?.id) {
-      await setUserContext(user.id);
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('destinations')
-        .select('*')
-        .eq('is_active', true)
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-      setDestinations(data || []);
-    } catch (err: any) {
-      console.error('Error fetching destinations:', err);
-    }
   };
 
   const fetchExchangeRate = async () => {
@@ -143,7 +106,7 @@ export default function SavedItineraryScreen() {
       setLoading(true);
       const { data, error } = await supabase
         .from('itineraries')
-        .select('*, destinations(name)')
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -156,77 +119,23 @@ export default function SavedItineraryScreen() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      destination_id: '',
-      destination_name: '',
-      name: '',
-      days: '1',
-      no_of_pax: '2',
-      full_itinerary: '',
-      inclusions_driver: '',
-      exclusions_driver: '',
-      cost_usd_driver: '',
-      inclusions_self_drive_cab: '',
-      exclusions_self_drive_cab: '',
-      cost_usd_self_drive_cab: '',
-      inclusions_self_drive_scooter: '',
-      exclusions_self_drive_scooter: '',
-      cost_usd_self_drive_scooter: '',
-      important_notes: '',
-      disclaimers: '',
-    });
-    setEditingId(null);
-    setShowForm(false);
-  };
-
   const handleEdit = (itinerary: Itinerary) => {
-    const transportMode = itinerary.mode_of_transport;
-    const baseName = itinerary.name
-      .replace(' (Driver with Cab)', '')
-      .replace(' (Self Drive Cab)', '')
-      .replace(' (Self Drive Scooter)', '');
-
     setFormData({
-      destination_id: itinerary.destination_id || '',
-      destination_name: itinerary.destinations?.name || '',
-      name: baseName,
+      name: itinerary.name,
       days: itinerary.days.toString(),
       no_of_pax: itinerary.no_of_pax.toString(),
       full_itinerary: itinerary.full_itinerary,
-      inclusions_driver: transportMode === 'driver_with_cab' ? itinerary.inclusions : '',
-      exclusions_driver: transportMode === 'driver_with_cab' ? itinerary.exclusions : '',
-      cost_usd_driver: transportMode === 'driver_with_cab' ? itinerary.cost_usd.toString() : '',
-      inclusions_self_drive_cab: transportMode === 'self_drive_cab' ? itinerary.inclusions : '',
-      exclusions_self_drive_cab: transportMode === 'self_drive_cab' ? itinerary.exclusions : '',
-      cost_usd_self_drive_cab: transportMode === 'self_drive_cab' ? itinerary.cost_usd.toString() : '',
-      inclusions_self_drive_scooter: transportMode === 'self_drive_scooter' ? itinerary.inclusions : '',
-      exclusions_self_drive_scooter: transportMode === 'self_drive_scooter' ? itinerary.exclusions : '',
-      cost_usd_self_drive_scooter: transportMode === 'self_drive_scooter' ? itinerary.cost_usd.toString() : '',
-      important_notes: itinerary.important_notes || '',
-      disclaimers: itinerary.disclaimers || '',
+      inclusions: itinerary.inclusions,
+      exclusions: itinerary.exclusions,
+      cost_usd: itinerary.cost_usd.toString(),
     });
     setEditingId(itinerary.id);
     setShowForm(true);
   };
 
   const handleSave = async () => {
-    if (!formData.destination_id) {
-      Alert.alert('Error', 'Please select a destination');
-      return;
-    }
-
-    if (!formData.name || !formData.days || !formData.no_of_pax || !formData.full_itinerary) {
+    if (!formData.name || !formData.days || !formData.full_itinerary || !formData.cost_usd) {
       Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
-
-    const hasDriverData = formData.inclusions_driver && formData.cost_usd_driver;
-    const hasSelfDriveCabData = formData.inclusions_self_drive_cab && formData.cost_usd_self_drive_cab;
-    const hasSelfDriveScooterData = formData.inclusions_self_drive_scooter && formData.cost_usd_self_drive_scooter;
-
-    if (!hasDriverData && !hasSelfDriveCabData && !hasSelfDriveScooterData) {
-      Alert.alert('Error', 'Please provide at least one complete transport mode (inclusions and cost)');
       return;
     }
 
@@ -234,134 +143,55 @@ export default function SavedItineraryScreen() {
       setSaving(true);
 
       if (editingId) {
-        const itinerary = itineraries.find(i => i.id === editingId);
-        if (!itinerary) throw new Error('Itinerary not found');
-
-        const transportMode = itinerary.mode_of_transport;
-        let updateData: any = {
-          name: formData.name,
-          destination_id: formData.destination_id,
-          days: parseInt(formData.days),
-          no_of_pax: parseInt(formData.no_of_pax),
-          full_itinerary: formData.full_itinerary,
-          important_notes: formData.important_notes,
-          disclaimers: formData.disclaimers,
-          updated_at: new Date().toISOString(),
-        };
-
-        if (transportMode === 'driver_with_cab' && hasDriverData) {
-          updateData = {
-            ...updateData,
-            name: `${formData.name} (Driver with Cab)`,
-            inclusions: formData.inclusions_driver,
-            exclusions: formData.exclusions_driver,
-            cost_usd: parseFloat(formData.cost_usd_driver),
-            cost_inr: parseFloat(formData.cost_usd_driver) * exchangeRate,
-          };
-        } else if (transportMode === 'self_drive_cab' && hasSelfDriveCabData) {
-          updateData = {
-            ...updateData,
-            name: `${formData.name} (Self Drive Cab)`,
-            inclusions: formData.inclusions_self_drive_cab,
-            exclusions: formData.exclusions_self_drive_cab,
-            cost_usd: parseFloat(formData.cost_usd_self_drive_cab),
-            cost_inr: parseFloat(formData.cost_usd_self_drive_cab) * exchangeRate,
-          };
-        } else if (transportMode === 'self_drive_scooter' && hasSelfDriveScooterData) {
-          updateData = {
-            ...updateData,
-            name: `${formData.name} (Self Drive Scooter)`,
-            inclusions: formData.inclusions_self_drive_scooter,
-            exclusions: formData.exclusions_self_drive_scooter,
-            cost_usd: parseFloat(formData.cost_usd_self_drive_scooter),
-            cost_inr: parseFloat(formData.cost_usd_self_drive_scooter) * exchangeRate,
-          };
-        } else {
-          Alert.alert('Error', 'Please fill in the transport mode data that matches the current itinerary');
-          setSaving(false);
-          return;
-        }
-
         const { error } = await supabase
           .from('itineraries')
-          .update(updateData)
+          .update({
+            name: formData.name,
+            days: parseInt(formData.days),
+            no_of_pax: parseInt(formData.no_of_pax),
+            full_itinerary: formData.full_itinerary,
+            inclusions: formData.inclusions,
+            exclusions: formData.exclusions,
+            cost_usd: parseFloat(formData.cost_usd),
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', editingId);
 
         if (error) throw error;
-
         Alert.alert('Success', 'Itinerary updated successfully');
       } else {
-        const itinerariesToCreate: any[] = [];
-
-        if (hasDriverData) {
-          itinerariesToCreate.push({
-            name: `${formData.name} (Driver with Cab)`,
-            destination_id: formData.destination_id,
+        const { error } = await supabase
+          .from('itineraries')
+          .insert([{
+            name: formData.name,
             days: parseInt(formData.days),
             no_of_pax: parseInt(formData.no_of_pax),
             full_itinerary: formData.full_itinerary,
-            inclusions: formData.inclusions_driver,
-            exclusions: formData.exclusions_driver,
-            cost_usd: parseFloat(formData.cost_usd_driver),
-            cost_inr: parseFloat(formData.cost_usd_driver) * exchangeRate,
-            mode_of_transport: 'driver_with_cab',
-            important_notes: formData.important_notes,
-            disclaimers: formData.disclaimers,
+            inclusions: formData.inclusions,
+            exclusions: formData.exclusions,
+            cost_usd: parseFloat(formData.cost_usd),
             created_by: user?.id,
-          });
-        }
-
-        if (hasSelfDriveCabData) {
-          itinerariesToCreate.push({
-            name: `${formData.name} (Self Drive Cab)`,
-            destination_id: formData.destination_id,
-            days: parseInt(formData.days),
-            no_of_pax: parseInt(formData.no_of_pax),
-            full_itinerary: formData.full_itinerary,
-            inclusions: formData.inclusions_self_drive_cab,
-            exclusions: formData.exclusions_self_drive_cab,
-            cost_usd: parseFloat(formData.cost_usd_self_drive_cab),
-            cost_inr: parseFloat(formData.cost_usd_self_drive_cab) * exchangeRate,
-            mode_of_transport: 'self_drive_cab',
-            important_notes: formData.important_notes,
-            disclaimers: formData.disclaimers,
-            created_by: user?.id,
-          });
-        }
-
-        if (hasSelfDriveScooterData) {
-          itinerariesToCreate.push({
-            name: `${formData.name} (Self Drive Scooter)`,
-            destination_id: formData.destination_id,
-            days: parseInt(formData.days),
-            no_of_pax: parseInt(formData.no_of_pax),
-            full_itinerary: formData.full_itinerary,
-            inclusions: formData.inclusions_self_drive_scooter,
-            exclusions: formData.exclusions_self_drive_scooter,
-            cost_usd: parseFloat(formData.cost_usd_self_drive_scooter),
-            cost_inr: parseFloat(formData.cost_usd_self_drive_scooter) * exchangeRate,
-            mode_of_transport: 'self_drive_scooter',
-            important_notes: formData.important_notes,
-            disclaimers: formData.disclaimers,
-            created_by: user?.id,
-          });
-        }
-
-        const { error } = await supabase.from('itineraries').insert(itinerariesToCreate);
+          }]);
 
         if (error) throw error;
-
-        Alert.alert(
-          'Success',
-          `Created ${itinerariesToCreate.length} itinerary variant(s) successfully`
-        );
+        Alert.alert('Success', 'Itinerary saved successfully');
       }
 
-      resetForm();
+      setFormData({
+        name: '',
+        days: '1',
+        no_of_pax: '2',
+        full_itinerary: '',
+        inclusions: '',
+        exclusions: '',
+        cost_usd: '',
+      });
+      setEditingId(null);
+      setShowForm(false);
       fetchItineraries();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving itinerary:', error);
-      Alert.alert('Error', error.message || 'Failed to save itinerary');
+      Alert.alert('Error', 'Failed to save itinerary');
     } finally {
       setSaving(false);
     }
@@ -378,10 +208,13 @@ export default function SavedItineraryScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { error } = await supabase.from('itineraries').delete().eq('id', id);
+              const { error } = await supabase
+                .from('itineraries')
+                .delete()
+                .eq('id', id);
+
               if (error) throw error;
               fetchItineraries();
-              Alert.alert('Success', 'Itinerary deleted');
             } catch (error) {
               console.error('Error deleting itinerary:', error);
               Alert.alert('Error', 'Failed to delete itinerary');
@@ -392,51 +225,52 @@ export default function SavedItineraryScreen() {
     );
   };
 
-  const handleCopy = async (itinerary: Itinerary) => {
-    const text = `
-${itinerary.name}
-${itinerary.days} Days | ${itinerary.no_of_pax} Passengers
+  const copyPackage = (itinerary: Itinerary) => {
+    const finalExchangeRate = exchangeRate + 2;
+    const costINR = (itinerary.cost_usd * finalExchangeRate).toFixed(2);
 
-Full Itinerary:
+    const packageText = `
+🏝️🌴 *NOMADLLER PVT LTD – EXCLUSIVE BALI PACKAGE* 🇮🇩
+
+🌟 *${itinerary.name}*
+━━━━━━━━━━━━━━━━━━━━
+
+📅 *Duration:* ${itinerary.days} Days
+👥 *Number of Passengers:* ${itinerary.no_of_pax}
+
+📍 *FULL ITINERARY:*
 ${itinerary.full_itinerary}
 
-Inclusions:
+✅ *INCLUSIONS:*
 ${itinerary.inclusions}
 
-Exclusions:
-${itinerary.exclusions || 'N/A'}
+❌ *EXCLUSIONS:*
+${itinerary.exclusions}
 
-Cost: $${itinerary.cost_usd} (₹${itinerary.cost_inr.toFixed(2)})
+💰 *PACKAGE COST:*
+• USD: $${itinerary.cost_usd}
+• INR: ₹${costINR}
+(Exchange Rate: ${finalExchangeRate.toFixed(2)})
 
-${itinerary.important_notes ? `Important Notes:\n${itinerary.important_notes}\n\n` : ''}${itinerary.disclaimers ? `Disclaimers:\n${itinerary.disclaimers}` : ''}
+━━━━━━━━━━━━━━━━━━━━
+*Package prepared by*
+*NOMADLLER PVT LTD*
     `.trim();
 
-    await Clipboard.setStringAsync(text);
-    Alert.alert('Success', 'Itinerary copied to clipboard');
+    Clipboard.setString(packageText);
+    Alert.alert('Success', 'Package details copied to clipboard!');
   };
 
-  const getTransportBadgeColor = (mode?: string) => {
-    switch (mode) {
-      case 'driver_with_cab': return '#3b82f6';
-      case 'self_drive_cab': return '#10b981';
-      case 'self_drive_scooter': return '#f59e0b';
-      default: return '#6b7280';
-    }
-  };
-
-  const getTransportLabel = (mode?: string) => {
-    switch (mode) {
-      case 'driver_with_cab': return 'Driver';
-      case 'self_drive_cab': return 'Self Cab';
-      case 'self_drive_scooter': return 'Scooter';
-      default: return 'N/A';
-    }
+  const calculateINR = (usd: string) => {
+    if (!usd) return '0.00';
+    const finalRate = exchangeRate + 2;
+    return (parseFloat(usd) * finalRate).toFixed(2);
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8b5cf6" />
+        <ActivityIndicator size="large" color="#007AFF" />
       </View>
     );
   }
@@ -445,403 +279,285 @@ ${itinerary.important_notes ? `Important Notes:\n${itinerary.important_notes}\n\
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#1a1a1a" />
+          <ArrowLeft size={24} color="#007AFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Saved Itineraries</Text>
-        <TouchableOpacity onPress={() => setShowForm(true)} style={styles.addButton}>
-          <Plus size={24} color="#8b5cf6" />
+        <TouchableOpacity
+          onPress={() => {
+            setShowForm(!showForm);
+            if (showForm) {
+              setEditingId(null);
+              setFormData({
+                name: '',
+                days: '1',
+                no_of_pax: '2',
+                full_itinerary: '',
+                inclusions: '',
+                exclusions: '',
+                cost_usd: '',
+              });
+            }
+          }}
+          style={styles.addButton}
+        >
+          <Plus size={24} color="#007AFF" />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchRow}>
-        <View style={styles.searchContainer}>
-          <Search size={20} color="#666" />
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Search size={20} color="#8E8E93" />
           <TextInput
             style={styles.searchInput}
+            placeholder="Search itineraries..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Search itineraries..."
-            placeholderTextColor="#999"
           />
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <X size={20} color="#8E8E93" />
+            </TouchableOpacity>
+          ) : null}
         </View>
         <TouchableOpacity
-          onPress={() => setShowFilters(!showFilters)}
           style={styles.filterButton}
+          onPress={() => setShowFilters(!showFilters)}
         >
-          <Filter size={20} color="#8b5cf6" />
+          <Filter size={20} color={showFilters ? '#007AFF' : '#8E8E93'} />
         </TouchableOpacity>
       </View>
 
       {showFilters && (
-        <View style={styles.filtersContainer}>
-          <TextInput
-            style={styles.filterInput}
-            value={filterDays}
-            onChangeText={setFilterDays}
-            placeholder="Days"
-            keyboardType="numeric"
-          />
-          <TextInput
-            style={styles.filterInput}
-            value={filterPax}
-            onChangeText={setFilterPax}
-            placeholder="Passengers"
-            keyboardType="numeric"
-          />
-          <TouchableOpacity onPress={clearFilters} style={styles.clearButton}>
-            <Text style={styles.clearButtonText}>Clear</Text>
-          </TouchableOpacity>
+        <View style={styles.filterContainer}>
+          <View style={styles.filterRow}>
+            <View style={styles.filterItem}>
+              <Text style={styles.filterLabel}>Days</Text>
+              <TextInput
+                style={styles.filterInput}
+                placeholder="e.g., 7"
+                value={filterDays}
+                onChangeText={setFilterDays}
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={styles.filterItem}>
+              <Text style={styles.filterLabel}>Passengers</Text>
+              <TextInput
+                style={styles.filterInput}
+                placeholder="e.g., 2"
+                value={filterPax}
+                onChangeText={setFilterPax}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+          {(filterDays || filterPax) && (
+            <TouchableOpacity style={styles.clearFiltersButton} onPress={clearFilters}>
+              <Text style={styles.clearFiltersText}>Clear Filters</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      <ScrollView style={styles.content}>
+        {showForm && (
+          <View style={styles.formCard}>
+            <Text style={styles.formTitle}>
+              {editingId ? 'Edit Itinerary' : 'Add New Itinerary'}
+            </Text>
+
+            <Text style={styles.label}>Itinerary Name *</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.name}
+              onChangeText={(text) => setFormData({ ...formData, name: text })}
+              placeholder="e.g., Bali Adventure Package"
+            />
+
+            <Text style={styles.label}>Number of Days *</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.days}
+              onChangeText={(text) => setFormData({ ...formData, days: text })}
+              placeholder="e.g., 7"
+              keyboardType="numeric"
+            />
+
+            <Text style={styles.label}>Number of Passengers *</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.no_of_pax}
+              onChangeText={(text) => setFormData({ ...formData, no_of_pax: text })}
+              placeholder="e.g., 2"
+              keyboardType="numeric"
+            />
+
+            <Text style={styles.label}>Full Itinerary *</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={formData.full_itinerary}
+              onChangeText={(text) => setFormData({ ...formData, full_itinerary: text })}
+              placeholder="Day 1: Arrival and hotel check-in&#10;Day 2: City tour..."
+              multiline
+              numberOfLines={6}
+            />
+
+            <Text style={styles.label}>Inclusions</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={formData.inclusions}
+              onChangeText={(text) => setFormData({ ...formData, inclusions: text })}
+              placeholder="• Hotel accommodation&#10;• Daily breakfast&#10;• Airport transfers..."
+              multiline
+              numberOfLines={4}
+            />
+
+            <Text style={styles.label}>Exclusions</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={formData.exclusions}
+              onChangeText={(text) => setFormData({ ...formData, exclusions: text })}
+              placeholder="• International flights&#10;• Personal expenses&#10;• Travel insurance..."
+              multiline
+              numberOfLines={4}
+            />
+
+            <Text style={styles.label}>Cost in USD *</Text>
+            <TextInput
+              style={styles.input}
+              value={formData.cost_usd}
+              onChangeText={(text) => setFormData({ ...formData, cost_usd: text })}
+              placeholder="e.g., 1500"
+              keyboardType="decimal-pad"
+            />
+
+            {formData.cost_usd && (
+              <View style={styles.conversionBox}>
+                <Text style={styles.conversionText}>
+                  Exchange Rate: {(exchangeRate + 2).toFixed(2)}
+                </Text>
+                <Text style={styles.conversionAmount}>
+                  INR: ₹{calculateINR(formData.cost_usd)}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.formButtons}>
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton]}
+                onPress={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                  setFormData({
+                    name: '',
+                    days: '1',
+                    no_of_pax: '2',
+                    full_itinerary: '',
+                    inclusions: '',
+                    exclusions: '',
+                    cost_usd: '',
+                  });
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.saveButton]}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>
+                    {editingId ? 'Update Itinerary' : 'Save Itinerary'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {filteredItineraries.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No itineraries found</Text>
+            <Text style={styles.emptyText}>
+              {itineraries.length === 0 ? 'No saved itineraries yet' : 'No itineraries match your filters'}
+            </Text>
+            <Text style={styles.emptySubtext}>
+              {itineraries.length === 0 ? 'Tap + to add your first itinerary' : 'Try adjusting your search or filters'}
+            </Text>
           </View>
         ) : (
           filteredItineraries.map((itinerary) => (
-            <View key={itinerary.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{itinerary.name}</Text>
-                <View
-                  style={[
-                    styles.transportBadge,
-                    { backgroundColor: getTransportBadgeColor(itinerary.mode_of_transport) },
-                  ]}
-                >
-                  <Text style={styles.transportBadgeText}>
-                    {getTransportLabel(itinerary.mode_of_transport)}
-                  </Text>
+            <View key={itinerary.id} style={styles.itineraryCard}>
+              <View style={styles.itineraryHeader}>
+                <Text style={styles.itineraryName}>{itinerary.name}</Text>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    onPress={() => handleEdit(itinerary)}
+                    style={styles.actionButton}
+                  >
+                    <Edit size={20} color="#007AFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDelete(itinerary.id)}
+                    style={styles.actionButton}
+                  >
+                    <Trash2 size={20} color="#FF3B30" />
+                  </TouchableOpacity>
                 </View>
               </View>
-              <View style={styles.cardDetails}>
-                <Text style={styles.cardDetail}>{itinerary.days} Days</Text>
-                <Text style={styles.cardDetail}>•</Text>
-                <Text style={styles.cardDetail}>{itinerary.no_of_pax} Pax</Text>
-                <Text style={styles.cardDetail}>•</Text>
-                <Text style={styles.cardDetail}>${itinerary.cost_usd}</Text>
+
+              <View style={styles.itineraryMeta}>
+                <Text style={styles.itineraryDays}>{itinerary.days} Days</Text>
+                <Text style={styles.itineraryPax}>👥 {itinerary.no_of_pax} Passengers</Text>
               </View>
-              <View style={styles.cardActions}>
+
+              <View style={styles.itinerarySection}>
+                <Text style={styles.sectionTitle}>Itinerary:</Text>
+                <Text style={styles.sectionText} numberOfLines={3}>
+                  {itinerary.full_itinerary}
+                </Text>
+              </View>
+
+              {itinerary.inclusions && (
+                <View style={styles.itinerarySection}>
+                  <Text style={styles.sectionTitle}>Inclusions:</Text>
+                  <Text style={styles.sectionText} numberOfLines={2}>
+                    {itinerary.inclusions}
+                  </Text>
+                </View>
+              )}
+
+              {itinerary.exclusions && (
+                <View style={styles.itinerarySection}>
+                  <Text style={styles.sectionTitle}>Exclusions:</Text>
+                  <Text style={styles.sectionText} numberOfLines={2}>
+                    {itinerary.exclusions}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.costContainer}>
+                <View>
+                  <Text style={styles.costLabel}>Cost:</Text>
+                  <Text style={styles.costUSD}>${itinerary.cost_usd}</Text>
+                  <Text style={styles.costINR}>
+                    ₹{(itinerary.cost_usd * (exchangeRate + 2)).toFixed(2)}
+                  </Text>
+                </View>
                 <TouchableOpacity
-                  onPress={() => handleEdit(itinerary)}
-                  style={styles.actionButton}
+                  style={styles.copyButton}
+                  onPress={() => copyPackage(itinerary)}
                 >
-                  <Edit size={18} color="#8b5cf6" />
-                  <Text style={[styles.actionButtonText, styles.editText]}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleCopy(itinerary)}
-                  style={styles.actionButton}
-                >
-                  <Copy size={18} color="#3b82f6" />
-                  <Text style={styles.actionButtonText}>Copy</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleDelete(itinerary.id)}
-                  style={styles.actionButton}
-                >
-                  <Trash2 size={18} color="#ef4444" />
-                  <Text style={[styles.actionButtonText, styles.deleteText]}>Delete</Text>
+                  <Copy size={20} color="#fff" />
+                  <Text style={styles.copyButtonText}>Copy Package</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ))
         )}
       </ScrollView>
-
-      <Modal
-        visible={showForm}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setShowForm(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {editingId ? 'Edit Itinerary' : 'Add New Itinerary'}
-            </Text>
-            <TouchableOpacity onPress={() => setShowForm(false)}>
-              <X size={24} color="#333" />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Select Destination *</Text>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => setShowDestinationPicker(true)}
-              >
-                <Text
-                  style={[
-                    styles.pickerButtonText,
-                    !formData.destination_name && styles.placeholderText,
-                  ]}
-                >
-                  {formData.destination_name || 'Select a destination'}
-                </Text>
-                <ChevronDown size={20} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Itinerary Name *</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.name}
-                onChangeText={(text) => setFormData({ ...formData, name: text })}
-                placeholder="e.g., Magical Leh Adventure"
-              />
-              <Text style={styles.hint}>Transport mode will be added automatically</Text>
-            </View>
-
-            <View style={styles.formRow}>
-              <View style={styles.formGroupHalf}>
-                <Text style={styles.label}>Number of Days *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.days}
-                  onChangeText={(text) => setFormData({ ...formData, days: text })}
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={styles.formGroupHalf}>
-                <Text style={styles.label}>Number of Passengers *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.no_of_pax}
-                  onChangeText={(text) => setFormData({ ...formData, no_of_pax: text })}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Full Itinerary *</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.full_itinerary}
-                onChangeText={(text) => setFormData({ ...formData, full_itinerary: text })}
-                placeholder="Day-wise itinerary details"
-                multiline
-                numberOfLines={6}
-              />
-            </View>
-
-            <View style={styles.sectionDivider}>
-              <Text style={styles.sectionTitle}>Transport Mode Options</Text>
-              <Text style={styles.sectionSubtitle}>
-                Fill at least one transport mode completely
-              </Text>
-            </View>
-
-            <View style={styles.transportSection}>
-              <Text style={styles.transportTitle}>🚗 Driver with Cab</Text>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Inclusions</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={formData.inclusions_driver}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, inclusions_driver: text })
-                  }
-                  placeholder="What's included"
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Exclusions</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={formData.exclusions_driver}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, exclusions_driver: text })
-                  }
-                  placeholder="What's not included"
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Cost (USD)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.cost_usd_driver}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, cost_usd_driver: text })
-                  }
-                  keyboardType="decimal-pad"
-                  placeholder="0.00"
-                />
-              </View>
-            </View>
-
-            <View style={styles.transportSection}>
-              <Text style={styles.transportTitle}>🚙 Self Drive Cab</Text>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Inclusions</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={formData.inclusions_self_drive_cab}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, inclusions_self_drive_cab: text })
-                  }
-                  placeholder="What's included"
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Exclusions</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={formData.exclusions_self_drive_cab}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, exclusions_self_drive_cab: text })
-                  }
-                  placeholder="What's not included"
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Cost (USD)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.cost_usd_self_drive_cab}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, cost_usd_self_drive_cab: text })
-                  }
-                  keyboardType="decimal-pad"
-                  placeholder="0.00"
-                />
-              </View>
-            </View>
-
-            <View style={styles.transportSection}>
-              <Text style={styles.transportTitle}>🛵 Self Drive Scooter</Text>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Inclusions</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={formData.inclusions_self_drive_scooter}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, inclusions_self_drive_scooter: text })
-                  }
-                  placeholder="What's included"
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Exclusions</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={formData.exclusions_self_drive_scooter}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, exclusions_self_drive_scooter: text })
-                  }
-                  placeholder="What's not included"
-                  multiline
-                  numberOfLines={4}
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Cost (USD)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.cost_usd_self_drive_scooter}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, cost_usd_self_drive_scooter: text })
-                  }
-                  keyboardType="decimal-pad"
-                  placeholder="0.00"
-                />
-              </View>
-            </View>
-
-            <View style={styles.sectionDivider}>
-              <Text style={styles.sectionTitle}>Additional Information</Text>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Important Notes</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.important_notes}
-                onChangeText={(text) => setFormData({ ...formData, important_notes: text })}
-                placeholder="Important information for travelers"
-                multiline
-                numberOfLines={4}
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Disclaimers</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={formData.disclaimers}
-                onChangeText={(text) => setFormData({ ...formData, disclaimers: text })}
-                placeholder="Terms and conditions"
-                multiline
-                numberOfLines={4}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-              onPress={handleSave}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.saveButtonText}>Save Itinerary</Text>
-              )}
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showDestinationPicker}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowDestinationPicker(false)}
-      >
-        <TouchableOpacity
-          style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDestinationPicker(false)}
-        >
-          <View style={styles.pickerModal}>
-            <Text style={styles.pickerTitle}>Select Destination</Text>
-            <ScrollView style={styles.pickerList}>
-              {destinations.map((dest) => (
-                <TouchableOpacity
-                  key={dest.id}
-                  style={styles.pickerOption}
-                  onPress={() => {
-                    setFormData({
-                      ...formData,
-                      destination_id: dest.id,
-                      destination_name: dest.name,
-                    });
-                    setShowDestinationPicker(false);
-                  }}
-                >
-                  <Text style={styles.pickerOptionText}>{dest.name}</Text>
-                  {formData.destination_id === dest.id && (
-                    <Check size={20} color="#8b5cf6" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 }
@@ -849,325 +565,290 @@ ${itinerary.important_notes ? `Important Notes:\n${itinerary.important_notes}\n\
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F2F2F7',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F2F2F7',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#E5E5EA',
   },
   backButton: {
     padding: 8,
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+    fontWeight: '600',
+    color: '#000',
   },
   addButton: {
     padding: 8,
   },
-  searchRow: {
+  searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
     gap: 12,
   },
-  searchContainer: {
+  searchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 10,
     paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    padding: 12,
+    paddingVertical: 10,
     fontSize: 16,
-    color: '#1a1a1a',
-    marginLeft: 8,
+    color: '#000',
   },
   filterButton: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 10,
   },
-  filtersContainer: {
-    flexDirection: 'row',
+  filterContainer: {
+    backgroundColor: '#fff',
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  filterItem: {
+    flex: 1,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#8E8E93',
+    marginBottom: 6,
   },
   filterInput: {
-    flex: 1,
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#E5E5EA',
     borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
+    padding: 10,
+    fontSize: 16,
+    color: '#000',
+    backgroundColor: '#F9F9F9',
   },
-  clearButton: {
-    backgroundColor: '#8b5cf6',
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    justifyContent: 'center',
+  clearFiltersButton: {
+    marginTop: 12,
+    alignItems: 'center',
   },
-  clearButtonText: {
-    color: '#fff',
+  clearFiltersText: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#FF3B30',
   },
   content: {
     flex: 1,
-  },
-  contentContainer: {
     padding: 16,
   },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 48,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  card: {
+  formCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    marginBottom: 20,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  cardTitle: {
-    flex: 1,
-    fontSize: 16,
+  formTitle: {
+    fontSize: 18,
     fontWeight: '600',
-    color: '#1a1a1a',
-    marginRight: 8,
-  },
-  transportBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  transportBadgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  cardDetails: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  cardDetail: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    backgroundColor: '#f9fafb',
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#3b82f6',
-  },
-  editText: {
-    color: '#8b5cf6',
-  },
-  deleteText: {
-    color: '#ef4444',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 16,
-  },
-  formGroup: {
+    color: '#000',
     marginBottom: 16,
-  },
-  formRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  formGroupHalf: {
-    flex: 1,
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: '500',
+    color: '#000',
     marginBottom: 8,
+    marginTop: 12,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#E5E5EA',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#1a1a1a',
-    backgroundColor: '#fff',
+    color: '#000',
+    backgroundColor: '#F9F9F9',
   },
   textArea: {
     minHeight: 100,
     textAlignVertical: 'top',
   },
-  hint: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 4,
-  },
-  pickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
+  conversionBox: {
+    backgroundColor: '#F0F9FF',
     borderRadius: 8,
     padding: 12,
-    backgroundColor: '#fff',
+    marginTop: 12,
   },
-  pickerButtonText: {
-    fontSize: 16,
-    color: '#1a1a1a',
-  },
-  placeholderText: {
-    color: '#9ca3af',
-  },
-  sectionDivider: {
-    marginVertical: 24,
-    paddingTop: 16,
-    borderTopWidth: 2,
-    borderTopColor: '#e5e7eb',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+  conversionText: {
+    fontSize: 14,
+    color: '#007AFF',
     marginBottom: 4,
   },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
+  conversionAmount: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#007AFF',
   },
-  transportSection: {
-    backgroundColor: '#f9fafb',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+  formButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
   },
-  transportTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 12,
-  },
-  saveButton: {
-    backgroundColor: '#8b5cf6',
-    padding: 16,
+  button: {
+    flex: 1,
+    padding: 14,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 32,
   },
-  saveButtonDisabled: {
-    opacity: 0.6,
+  cancelButton: {
+    backgroundColor: '#F2F2F7',
   },
-  saveButtonText: {
-    color: '#fff',
+  cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#007AFF',
   },
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+  saveButton: {
+    backgroundColor: '#007AFF',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  emptyState: {
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
   },
-  pickerModal: {
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#8E8E93',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#8E8E93',
+  },
+  itineraryCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    width: '80%',
-    maxHeight: '60%',
-  },
-  pickerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
     marginBottom: 16,
   },
-  pickerList: {
-    maxHeight: 300,
+  itineraryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  pickerOption: {
+  itineraryName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+    flex: 1,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    padding: 4,
+  },
+  itineraryMeta: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
+  },
+  itineraryDays: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  itineraryPax: {
+    fontSize: 14,
+    color: '#34C759',
+    fontWeight: '500',
+  },
+  itinerarySection: {
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 4,
+  },
+  sectionText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  costContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5EA',
+  },
+  costLabel: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginBottom: 4,
+  },
+  costUSD: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000',
+  },
+  costINR: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  copyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    gap: 8,
+    backgroundColor: '#34C759',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
   },
-  pickerOptionText: {
-    fontSize: 16,
-    color: '#1a1a1a',
+  copyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

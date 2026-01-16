@@ -16,11 +16,18 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { setUserContext } from '@/lib/auth-context';
-import { Lead, Destination, Itinerary } from '@/types';
-import { ArrowLeft, Phone, MessageCircle, X, Calendar, Users, MapPin, DollarSign, ChevronDown, Search, Check } from 'lucide-react-native';
+import { Lead } from '@/types';
+import { ArrowLeft, Phone, MessageCircle, X, Calendar, Users, MapPin, DollarSign, ChevronDown } from 'lucide-react-native';
 import DateTimePickerComponent from '@/components/DateTimePicker';
 import { calendarService } from '@/services/calendar';
+
+interface Itinerary {
+  id: string;
+  name: string;
+  days: number;
+  cost_usd: number;
+  no_of_pax: number;
+}
 
 export default function AddedLeadsScreen() {
   const { user } = useAuth();
@@ -39,20 +46,6 @@ export default function AddedLeadsScreen() {
   const [budget, setBudget] = useState('');
   const [remarks, setRemarks] = useState('');
 
-  const [destinations, setDestinations] = useState<Destination[]>([]);
-  const [selectedDestination, setSelectedDestination] = useState<Destination | null>(null);
-  const [showDestinationPicker, setShowDestinationPicker] = useState(false);
-
-  const [itineraries, setItineraries] = useState<Itinerary[]>([]);
-  const [filteredItineraries, setFilteredItineraries] = useState<Itinerary[]>([]);
-  const [selectedItinerary, setSelectedItinerary] = useState<Itinerary | null>(null);
-  const [showItinerarySelection, setShowItinerarySelection] = useState(false);
-  const [itinerarySearchText, setItinerarySearchText] = useState('');
-  const [filterTransportMode, setFilterTransportMode] = useState('');
-  const [filterDays, setFilterDays] = useState('');
-  const [filterPax, setFilterPax] = useState('');
-  const [loadingItineraries, setLoadingItineraries] = useState(false);
-
   const [actionType, setActionType] = useState('');
   const [showActionPicker, setShowActionPicker] = useState(false);
   const [followUpRemark, setFollowUpRemark] = useState('');
@@ -66,6 +59,11 @@ export default function AddedLeadsScreen() {
   const [showDeadReasonPicker, setShowDeadReasonPicker] = useState(false);
   const [confirmTravelDate, setConfirmTravelDate] = useState<Date | null>(null);
   const [reminderTime, setReminderTime] = useState<Date | null>(null);
+
+  const [availableItineraries, setAvailableItineraries] = useState<Itinerary[]>([]);
+  const [selectedItinerary, setSelectedItinerary] = useState<Itinerary | null>(null);
+  const [showItineraryPicker, setShowItineraryPicker] = useState(false);
+  const [loadingItineraries, setLoadingItineraries] = useState(false);
 
   const appState = useRef(AppState.currentState);
   const callInitiatedRef = useRef(false);
@@ -89,16 +87,8 @@ export default function AddedLeadsScreen() {
     'Other',
   ];
 
-  const transportModes = [
-    { label: 'All', value: '' },
-    { label: 'Driver with Cab', value: 'driver_with_cab' },
-    { label: 'Self Drive Cab', value: 'self_drive_cab' },
-    { label: 'Self Drive Scooter', value: 'self_drive_scooter' },
-  ];
-
   useEffect(() => {
     fetchLeads();
-    fetchDestinations();
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
@@ -106,21 +96,6 @@ export default function AddedLeadsScreen() {
       subscription.remove();
     };
   }, []);
-
-  useEffect(() => {
-    if (selectedDestination) {
-      fetchItineraries();
-      setShowItinerarySelection(true);
-    } else {
-      setItineraries([]);
-      setFilteredItineraries([]);
-      setShowItinerarySelection(false);
-    }
-  }, [selectedDestination]);
-
-  useEffect(() => {
-    filterItineraries();
-  }, [itineraries, itinerarySearchText, filterTransportMode, filterDays, filterPax]);
 
   const handleAppStateChange = (nextAppState: AppStateStatus) => {
     if (
@@ -156,72 +131,6 @@ export default function AddedLeadsScreen() {
     }
   };
 
-  const fetchDestinations = async () => {
-    if (user?.id) {
-      await setUserContext(user.id);
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('destinations')
-        .select('*')
-        .eq('is_active', true)
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-      setDestinations(data || []);
-    } catch (err: any) {
-      console.error('Error fetching destinations:', err);
-    }
-  };
-
-  const fetchItineraries = async () => {
-    if (!selectedDestination) return;
-
-    setLoadingItineraries(true);
-    try {
-      const { data, error } = await supabase
-        .from('itineraries')
-        .select('*')
-        .eq('destination_id', selectedDestination.id)
-        .order('name', { ascending: true });
-
-      if (error) throw error;
-      setItineraries(data || []);
-      setFilteredItineraries(data || []);
-    } catch (err: any) {
-      console.error('Error fetching itineraries:', err);
-      setItineraries([]);
-      setFilteredItineraries([]);
-    } finally {
-      setLoadingItineraries(false);
-    }
-  };
-
-  const filterItineraries = () => {
-    let filtered = [...itineraries];
-
-    if (itinerarySearchText) {
-      filtered = filtered.filter((it) =>
-        it.name.toLowerCase().includes(itinerarySearchText.toLowerCase())
-      );
-    }
-
-    if (filterTransportMode) {
-      filtered = filtered.filter((it) => it.mode_of_transport === filterTransportMode);
-    }
-
-    if (filterDays) {
-      filtered = filtered.filter((it) => it.days === parseInt(filterDays));
-    }
-
-    if (filterPax) {
-      filtered = filtered.filter((it) => it.no_of_pax === parseInt(filterPax));
-    }
-
-    setFilteredItineraries(filtered);
-  };
-
   const resetForm = () => {
     setClientName('');
     setTravelDate(null);
@@ -230,15 +139,38 @@ export default function AddedLeadsScreen() {
     setPlace('');
     setBudget('');
     setRemarks('');
-    setSelectedDestination(null);
-    setItineraries([]);
-    setFilteredItineraries([]);
     setSelectedItinerary(null);
-    setShowItinerarySelection(false);
-    setItinerarySearchText('');
-    setFilterTransportMode('');
-    setFilterDays('');
-    setFilterPax('');
+    setAvailableItineraries([]);
+  };
+
+  const fetchItinerariesByPlace = async (destination: string) => {
+    if (!destination.trim()) {
+      setAvailableItineraries([]);
+      setSelectedItinerary(null);
+      return;
+    }
+
+    setLoadingItineraries(true);
+    try {
+      const { data, error } = await supabase
+        .from('itineraries')
+        .select('id, name, days, cost_usd, no_of_pax')
+        .ilike('name', `%${destination}%`);
+
+      if (error) throw error;
+      setAvailableItineraries(data || []);
+
+      if (data && data.length === 1) {
+        setSelectedItinerary(data[0]);
+      } else {
+        setSelectedItinerary(null);
+      }
+    } catch (err: any) {
+      console.error('Error fetching itineraries:', err);
+      setAvailableItineraries([]);
+    } finally {
+      setLoadingItineraries(false);
+    }
   };
 
   const handleCall = (phoneNumber: string, lead: Lead) => {
@@ -261,69 +193,9 @@ export default function AddedLeadsScreen() {
     });
   };
 
-  const handleSendItineraryWhatsApp = async () => {
-    if (!selectedItinerary || !currentLead?.contact_number) {
-      Alert.alert('Error', 'Cannot send itinerary');
-      return;
-    }
-
-    const exchangeRate = 83;
-    const costINR = Math.round(selectedItinerary.cost_usd * exchangeRate);
-
-    const message = `Hi ${clientName},
-
-Here's your ${selectedDestination?.name} itinerary:
-
-*${selectedItinerary.name}*
-Duration: ${selectedItinerary.days} Days | Passengers: ${selectedItinerary.no_of_pax}
-
-💰 *Cost:*
-USD $${selectedItinerary.cost_usd.toFixed(2)}
-INR ₹${costINR}
-
-📋 *Itinerary:*
-${selectedItinerary.full_itinerary}
-
-✅ *Inclusions:*
-${selectedItinerary.inclusions}
-
-❌ *Exclusions:*
-${selectedItinerary.exclusions}
-
-${selectedItinerary.important_notes ? `\n⚠️ *Important Notes:*\n${selectedItinerary.important_notes}\n` : ''}
-${selectedItinerary.disclaimers ? `\n📝 *Disclaimers:*\n${selectedItinerary.disclaimers}\n` : ''}
-
-Looking forward to planning your amazing journey!
-
-Best regards,
-TeleCRM Team`;
-
-    try {
-      const encodedMessage = encodeURIComponent(message);
-      const whatsappUrl = `https://wa.me/${currentLead.contact_number}?text=${encodedMessage}`;
-
-      const canOpen = await Linking.canOpenURL(whatsappUrl);
-      if (!canOpen) {
-        Alert.alert('Error', 'WhatsApp is not installed');
-        return;
-      }
-
-      await Linking.openURL(whatsappUrl);
-      Alert.alert('Success', 'Itinerary sent via WhatsApp!');
-    } catch (err: any) {
-      console.error('Error sending via WhatsApp:', err);
-      Alert.alert('Error', 'Failed to send itinerary');
-    }
-  };
-
-  const handleSkipItinerary = () => {
-    setSelectedItinerary(null);
-    setShowItinerarySelection(false);
-  };
-
   const validateProfile = (): string | null => {
     if (!clientName.trim()) return 'Client name is required';
-    if (!selectedDestination) return 'Destination is required';
+    if (!place.trim()) return 'Destination place is required';
     if (!noOfPax || parseInt(noOfPax) < 1) return 'Number of persons must be at least 1';
     if (!budget || parseFloat(budget) <= 0) return 'Budget must be greater than 0';
     if (!travelDate && !travelMonth.trim()) return 'Please provide either travel date or month';
@@ -368,8 +240,7 @@ TeleCRM Team`;
     try {
       const updateData: any = {
         client_name: clientName.trim(),
-        place: selectedDestination?.name || place.trim(),
-        destination_id: selectedDestination?.id || null,
+        place: place.trim(),
         no_of_pax: parseInt(noOfPax),
         expected_budget: parseFloat(budget),
         remark: remarks.trim() || null,
@@ -477,7 +348,7 @@ TeleCRM Team`;
         try {
           const calendarTitle = `Travel Reminder: ${clientName}`;
           const calendarDescription = `Client: ${clientName}
-Location: ${selectedDestination?.name || place}
+Location: ${place}
 Pax: ${noOfPax}
 Travel Date: ${confirmTravelDate.toISOString().split('T')[0]}
 
@@ -526,6 +397,8 @@ This is a 7-day advance reminder for the travel date.`;
     resetForm();
     setActionType('');
     setFollowUpRemark('');
+    setNextFollowUpDate(new Date());
+    setNextFollowUpTime(new Date());
     setItineraryId('');
     setTotalAmount('');
     setAdvanceAmount('');
@@ -536,28 +409,20 @@ This is a 7-day advance reminder for the travel date.`;
     setCurrentLead(null);
   };
 
-  const getTransportBadgeColor = (mode?: string) => {
-    switch (mode) {
-      case 'driver_with_cab': return '#3b82f6';
-      case 'self_drive_cab': return '#10b981';
-      case 'self_drive_scooter': return '#f59e0b';
-      default: return '#6b7280';
-    }
-  };
-
-  const getTransportLabel = (mode?: string) => {
-    switch (mode) {
-      case 'driver_with_cab': return 'Driver';
-      case 'self_drive_cab': return 'Self Cab';
-      case 'self_drive_scooter': return 'Scooter';
-      default: return 'N/A';
-    }
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8b5cf6" />
+        <ActivityIndicator size="large" color="#14b8a6" />
       </View>
     );
   }
@@ -575,28 +440,37 @@ This is a 7-day advance reminder for the travel date.`;
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         {leads.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No leads added yet</Text>
+            <Phone size={64} color="#ccc" />
+            <Text style={styles.emptyTitle}>No Added Leads Yet</Text>
+            <Text style={styles.emptyText}>
+              Start adding leads with their contact numbers to begin your outreach
+            </Text>
           </View>
         ) : (
           leads.map((lead) => (
-            <View key={lead.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{lead.client_name}</Text>
-                <Text style={styles.cardContact}>{lead.contact_number}</Text>
+            <View key={lead.id} style={styles.leadCard}>
+              <View style={styles.leadHeader}>
+                <View style={styles.phoneContainer}>
+                  <Phone size={20} color="#14b8a6" />
+                  <Text style={styles.phoneNumber}>{lead.contact_number}</Text>
+                </View>
+                <Text style={styles.timestamp}>{formatDate(lead.created_at)}</Text>
               </View>
-              <View style={styles.cardActions}>
+
+              <View style={styles.actionButtons}>
                 <TouchableOpacity
-                  onPress={() => handleCall(lead.contact_number!, lead)}
                   style={[styles.actionButton, styles.callButton]}
+                  onPress={() => handleCall(lead.contact_number!, lead)}
                 >
-                  <Phone size={18} color="#fff" />
+                  <Phone size={20} color="#fff" />
                   <Text style={styles.actionButtonText}>Call</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
-                  onPress={() => handleWhatsApp(lead.contact_number!)}
                   style={[styles.actionButton, styles.whatsappButton]}
+                  onPress={() => handleWhatsApp(lead.contact_number!)}
                 >
-                  <MessageCircle size={18} color="#fff" />
+                  <MessageCircle size={20} color="#fff" />
                   <Text style={styles.actionButtonText}>WhatsApp</Text>
                 </TouchableOpacity>
               </View>
@@ -663,139 +537,62 @@ This is a 7-day advance reminder for the travel date.`;
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Destination Place *</Text>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => setShowDestinationPicker(true)}
-              >
-                <Text
-                  style={[
-                    styles.pickerButtonText,
-                    !selectedDestination && styles.placeholderText,
-                  ]}
-                >
-                  {selectedDestination?.name || 'Select a destination'}
-                </Text>
-                <ChevronDown size={20} color="#666" />
-              </TouchableOpacity>
+              <TextInput
+                style={styles.input}
+                value={place}
+                onChangeText={(text) => {
+                  setPlace(text);
+                  fetchItinerariesByPlace(text);
+                }}
+                placeholder="Enter destination"
+              />
             </View>
 
-            {showItinerarySelection && (
-              <>
-                <View style={styles.sectionDivider}>
-                  <Text style={styles.sectionTitle}>Select Itinerary (Optional)</Text>
-                  <Text style={styles.sectionSubtitle}>
-                    Choose an itinerary to send via WhatsApp or skip to continue
-                  </Text>
-                </View>
-
-                <View style={styles.searchContainer}>
-                  <Search size={20} color="#666" />
-                  <TextInput
-                    style={styles.searchInput}
-                    value={itinerarySearchText}
-                    onChangeText={setItinerarySearchText}
-                    placeholder="Search itineraries..."
-                    placeholderTextColor="#999"
-                  />
-                </View>
-
-                <View style={styles.filterRow}>
-                  <TextInput
-                    style={styles.filterInput}
-                    value={filterDays}
-                    onChangeText={setFilterDays}
-                    placeholder="Days"
-                    keyboardType="numeric"
-                  />
-                  <TextInput
-                    style={styles.filterInput}
-                    value={filterPax}
-                    onChangeText={setFilterPax}
-                    placeholder="Pax"
-                    keyboardType="numeric"
-                  />
-                </View>
-
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.transportFilters}>
-                  {transportModes.map((mode) => (
-                    <TouchableOpacity
-                      key={mode.value}
-                      style={[
-                        styles.transportFilterButton,
-                        filterTransportMode === mode.value && styles.transportFilterButtonActive,
-                      ]}
-                      onPress={() => setFilterTransportMode(mode.value)}
-                    >
-                      <Text
-                        style={[
-                          styles.transportFilterText,
-                          filterTransportMode === mode.value && styles.transportFilterTextActive,
-                        ]}
-                      >
-                        {mode.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-
+            {place.trim() && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Select Itinerary</Text>
                 {loadingItineraries ? (
-                  <ActivityIndicator size="large" color="#8b5cf6" style={styles.loader} />
-                ) : filteredItineraries.length === 0 ? (
-                  <Text style={styles.noItinerariesText}>No itineraries found</Text>
-                ) : (
-                  filteredItineraries.map((itinerary) => (
+                  <View style={[styles.pickerButton, styles.loadingPicker]}>
+                    <ActivityIndicator size="small" color="#8b5cf6" />
+                    <Text style={styles.pickerButtonText}>Loading itineraries...</Text>
+                  </View>
+                ) : availableItineraries.length > 0 ? (
+                  <>
                     <TouchableOpacity
-                      key={itinerary.id}
-                      style={[
-                        styles.itineraryCard,
-                        selectedItinerary?.id === itinerary.id && styles.itineraryCardSelected,
-                      ]}
-                      onPress={() => setSelectedItinerary(itinerary)}
+                      style={styles.pickerButton}
+                      onPress={() => setShowItineraryPicker(!showItineraryPicker)}
                     >
-                      <View style={styles.itineraryCardHeader}>
-                        <Text style={styles.itineraryCardTitle}>{itinerary.name}</Text>
-                        <View
-                          style={[
-                            styles.transportBadge,
-                            { backgroundColor: getTransportBadgeColor(itinerary.mode_of_transport) },
-                          ]}
-                        >
-                          <Text style={styles.transportBadgeText}>
-                            {getTransportLabel(itinerary.mode_of_transport)}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.itineraryCardDetails}>
-                        <Text style={styles.itineraryCardDetail}>{itinerary.days} Days</Text>
-                        <Text style={styles.itineraryCardDetail}>•</Text>
-                        <Text style={styles.itineraryCardDetail}>{itinerary.no_of_pax} Pax</Text>
-                        <Text style={styles.itineraryCardDetail}>•</Text>
-                        <Text style={styles.itineraryCardDetail}>${itinerary.cost_usd}</Text>
-                      </View>
-                      {selectedItinerary?.id === itinerary.id && (
-                        <Check size={24} color="#8b5cf6" style={styles.checkIcon} />
-                      )}
+                      <Text style={[styles.pickerButtonText, !selectedItinerary && styles.placeholderText]}>
+                        {selectedItinerary ? selectedItinerary.name : 'Select an itinerary'}
+                      </Text>
+                      <ChevronDown size={20} color="#666" />
                     </TouchableOpacity>
-                  ))
+                    {showItineraryPicker && (
+                      <View style={styles.pickerOptions}>
+                        {availableItineraries.map((itinerary) => (
+                          <TouchableOpacity
+                            key={itinerary.id}
+                            style={styles.pickerOption}
+                            onPress={() => {
+                              setSelectedItinerary(itinerary);
+                              setShowItineraryPicker(false);
+                            }}
+                          >
+                            <View style={styles.itineraryOptionContent}>
+                              <Text style={styles.pickerOptionText}>{itinerary.name}</Text>
+                              <Text style={styles.itinerarySubtext}>
+                                {itinerary.days} days • USD ${itinerary.cost_usd} • {itinerary.no_of_pax} pax
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  <Text style={styles.noItinerariesText}>No itineraries found for this destination</Text>
                 )}
-
-                {selectedItinerary && (
-                  <TouchableOpacity
-                    style={styles.sendWhatsAppButton}
-                    onPress={handleSendItineraryWhatsApp}
-                  >
-                    <MessageCircle size={20} color="#fff" />
-                    <Text style={styles.sendWhatsAppButtonText}>Send via WhatsApp</Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  style={styles.skipButton}
-                  onPress={handleSkipItinerary}
-                >
-                  <Text style={styles.skipButtonText}>Skip Itinerary & Continue</Text>
-                </TouchableOpacity>
-              </>
+              </View>
             )}
 
             <View style={styles.formGroup}>
@@ -1011,41 +808,6 @@ This is a 7-day advance reminder for the travel date.`;
           </ScrollView>
         </View>
       </Modal>
-
-      <Modal
-        visible={showDestinationPicker}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowDestinationPicker(false)}
-      >
-        <TouchableOpacity
-          style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDestinationPicker(false)}
-        >
-          <View style={styles.pickerModal}>
-            <Text style={styles.pickerModalTitle}>Select Destination</Text>
-            <ScrollView style={styles.pickerModalList}>
-              {destinations.map((dest) => (
-                <TouchableOpacity
-                  key={dest.id}
-                  style={styles.pickerModalOption}
-                  onPress={() => {
-                    setSelectedDestination(dest);
-                    setPlace(dest.name);
-                    setShowDestinationPicker(false);
-                  }}
-                >
-                  <Text style={styles.pickerModalOptionText}>{dest.name}</Text>
-                  {selectedDestination?.id === dest.id && (
-                    <Check size={20} color="#8b5cf6" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 }
@@ -1062,14 +824,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
     backgroundColor: '#fff',
+    padding: 20,
+    paddingTop: 60,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#e5e5e5',
   },
   backButton: {
     padding: 8,
@@ -1091,34 +853,51 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48,
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#6b7280',
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
-  card: {
+  leadCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  cardHeader: {
-    marginBottom: 12,
+  leadHeader: {
+    marginBottom: 16,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+  phoneContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 4,
   },
-  cardContact: {
-    fontSize: 14,
-    color: '#6b7280',
+  phoneNumber: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
   },
-  cardActions: {
+  timestamp: {
+    fontSize: 12,
+    color: '#999',
+  },
+  actionButtons: {
     flexDirection: 'row',
     gap: 12,
   },
@@ -1127,15 +906,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    padding: 12,
+    paddingVertical: 12,
     borderRadius: 8,
+    gap: 8,
   },
   callButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#10b981',
   },
   whatsappButton: {
-    backgroundColor: '#25d366',
+    backgroundColor: '#3b82f6',
   },
   actionButtonText: {
     color: '#fff',
@@ -1148,12 +927,12 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 60,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#e5e5e5',
   },
   modalTitle: {
     fontSize: 20,
@@ -1162,10 +941,10 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     flex: 1,
-    padding: 16,
+    padding: 20,
   },
   formGroup: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   formRow: {
     flexDirection: 'row',
@@ -1177,60 +956,47 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#333',
     marginBottom: 8,
   },
   input: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#ddd',
     borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#f9f9f9',
     fontSize: 16,
-    color: '#1a1a1a',
-    backgroundColor: '#fff',
+    color: '#333',
   },
   textArea: {
-    minHeight: 80,
+    height: 100,
     textAlignVertical: 'top',
   },
-  pickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#fff',
-  },
-  pickerButtonText: {
-    fontSize: 16,
-    color: '#1a1a1a',
-  },
-  placeholderText: {
-    color: '#9ca3af',
-  },
-  pickerOptions: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+  modalActions: {
+    gap: 12,
     marginTop: 8,
-    backgroundColor: '#fff',
+    marginBottom: 40,
   },
-  pickerOption: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+  modalButton: {
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
   },
-  pickerOptionText: {
+  confirmButton: {
+    backgroundColor: '#14b8a6',
+  },
+  modalButtonText: {
+    color: '#fff',
     fontSize: 16,
-    color: '#1a1a1a',
+    fontWeight: '600',
   },
   sectionDivider: {
-    marginVertical: 24,
-    paddingTop: 16,
+    marginTop: 24,
+    marginBottom: 20,
+    paddingTop: 24,
     borderTopWidth: 2,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: '#e5e5e5',
   },
   sectionTitle: {
     fontSize: 18,
@@ -1240,201 +1006,69 @@ const styles = StyleSheet.create({
   },
   sectionSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#666',
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  searchInput: {
-    flex: 1,
-    padding: 12,
-    fontSize: 16,
-    color: '#1a1a1a',
-    marginLeft: 8,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  filterInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    backgroundColor: '#fff',
-  },
-  transportFilters: {
-    marginBottom: 16,
-  },
-  transportFilterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    marginRight: 8,
-  },
-  transportFilterButtonActive: {
-    backgroundColor: '#8b5cf6',
-  },
-  transportFilterText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6b7280',
-  },
-  transportFilterTextActive: {
-    color: '#fff',
-  },
-  loader: {
-    marginVertical: 24,
-  },
-  noItinerariesText: {
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#6b7280',
-    paddingVertical: 24,
-  },
-  itineraryCard: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    position: 'relative',
-  },
-  itineraryCardSelected: {
-    borderColor: '#8b5cf6',
-    backgroundColor: '#f5f3ff',
-  },
-  itineraryCardHeader: {
+  pickerButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  itineraryCardTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginRight: 8,
-  },
-  transportBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  transportBadgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  itineraryCardDetails: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  itineraryCardDetail: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  checkIcon: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-  },
-  sendWhatsAppButton: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#25d366',
-    padding: 16,
-    borderRadius: 8,
-    marginTop: 16,
-  },
-  sendWhatsAppButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  skipButton: {
-    padding: 16,
-    borderRadius: 8,
-    marginTop: 12,
-    marginBottom: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    alignItems: 'center',
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#f9f9f9',
   },
-  skipButtonText: {
-    color: '#6b7280',
+  pickerButtonText: {
     fontSize: 16,
-    fontWeight: '500',
+    color: '#333',
+  },
+  placeholderText: {
+    color: '#999',
+  },
+  pickerOptions: {
+    marginTop: 8,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pickerOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  pickerOptionText: {
+    fontSize: 16,
+    color: '#333',
   },
   dueAmountText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#ef4444',
+    color: '#14b8a6',
+    paddingVertical: 12,
   },
-  modalActions: {
-    marginTop: 24,
-    marginBottom: 32,
-  },
-  modalButton: {
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  confirmButton: {
-    backgroundColor: '#8b5cf6',
-  },
-  modalButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  pickerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  loadingPicker: {
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  pickerModal: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    width: '80%',
-    maxHeight: '60%',
+  noItinerariesText: {
+    fontSize: 14,
+    color: '#999',
+    paddingVertical: 12,
+    fontStyle: 'italic',
   },
-  pickerModalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 16,
+  itineraryOptionContent: {
+    flex: 1,
   },
-  pickerModalList: {
-    maxHeight: 300,
-  },
-  pickerModalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  pickerModalOptionText: {
-    fontSize: 16,
-    color: '#1a1a1a',
+  itinerarySubtext: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
   },
 });
