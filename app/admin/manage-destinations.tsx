@@ -1,7 +1,8 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/lib/supabase';
+import { supabase, setUserContext } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Trash2 } from 'lucide-react-native';
 
 interface Destination {
@@ -13,6 +14,7 @@ interface Destination {
 
 export default function ManageDestinationsScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [error, setError] = useState('');
@@ -20,8 +22,14 @@ export default function ManageDestinationsScreen() {
   const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDestinations();
-  }, []);
+    const initialize = async () => {
+      if (user?.id && user?.role) {
+        await setUserContext(user.id, user.role);
+      }
+      fetchDestinations();
+    };
+    initialize();
+  }, [user?.id]);
 
   const fetchDestinations = async () => {
     try {
