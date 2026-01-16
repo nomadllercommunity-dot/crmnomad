@@ -32,16 +32,37 @@ export default function LeadActionScreen() {
   const [showItineraryDropdown, setShowItineraryDropdown] = useState(false);
   const [sendManually, setSendManually] = useState(false);
   const [showSendItineraryModal, setShowSendItineraryModal] = useState(false);
+  const [destinations, setDestinations] = useState<{ id: string; name: string }[]>([]);
+  const [selectedDestination, setSelectedDestination] = useState<string>('');
+  const [filterPax, setFilterPax] = useState<string>('');
+  const [filterDays, setFilterDays] = useState<string>('');
+  const [filterTransport, setFilterTransport] = useState<string>('');
 
   useEffect(() => {
     fetchLead();
     fetchFollowUpHistory();
     fetchItineraries();
+    fetchDestinations();
   }, [leadId]);
+
+  const fetchDestinations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('destinations')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setDestinations(data || []);
+    } catch (err: any) {
+      console.error('Error fetching destinations:', err);
+    }
+  };
 
   useEffect(() => {
     filterItineraries();
-  }, [itinerarySearchText, itineraries]);
+  }, [itinerarySearchText, itineraries, selectedDestination, filterPax, filterDays, filterTransport]);
 
   const fetchLead = async () => {
     try {
@@ -93,19 +114,34 @@ export default function LeadActionScreen() {
   };
 
   const filterItineraries = () => {
-    if (!itinerarySearchText.trim()) {
-      setFilteredItineraries(itineraries);
-      return;
+    let filtered = [...itineraries];
+
+    if (selectedDestination) {
+      filtered = filtered.filter((item) => item.name.includes(selectedDestination));
     }
 
-    const search = itinerarySearchText.toLowerCase();
-    setFilteredItineraries(
-      itineraries.filter(
+    if (filterPax) {
+      filtered = filtered.filter((item) => item.no_of_pax === parseInt(filterPax));
+    }
+
+    if (filterDays) {
+      filtered = filtered.filter((item) => item.days === parseInt(filterDays));
+    }
+
+    if (filterTransport) {
+      filtered = filtered.filter((item) => item.name.includes(filterTransport));
+    }
+
+    if (itinerarySearchText.trim()) {
+      const search = itinerarySearchText.toLowerCase();
+      filtered = filtered.filter(
         (item) =>
           item.name.toLowerCase().includes(search) ||
           item.full_itinerary?.toLowerCase().includes(search)
-      )
-    );
+      );
+    }
+
+    setFilteredItineraries(filtered);
   };
 
   const startCall = () => {
@@ -422,57 +458,143 @@ TeleCRM Team`;
 
           {!sendManually && (
             <>
-              <Text style={styles.label}>Select Itinerary</Text>
-              <TouchableOpacity
-                style={styles.dropdown}
-                onPress={() => setShowItineraryDropdown(!showItineraryDropdown)}
-              >
-                <Text style={[styles.dropdownText, !selectedItinerary && styles.dropdownPlaceholder]}>
-                  {selectedItinerary ? selectedItinerary.name : 'Choose an itinerary...'}
-                </Text>
-                <ChevronDown size={20} color="#666" />
-              </TouchableOpacity>
-
-              {showItineraryDropdown && (
-                <View style={styles.dropdownContent}>
-                  <View style={styles.searchContainer}>
-                    <Search size={16} color="#999" />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Search itineraries..."
-                      value={itinerarySearchText}
-                      onChangeText={setItinerarySearchText}
-                      placeholderTextColor="#999"
-                    />
-                  </View>
-
-                  <ScrollView style={styles.dropdownList}>
-                    {filteredItineraries.length === 0 ? (
-                      <Text style={styles.emptyDropdownText}>No itineraries found</Text>
-                    ) : (
-                      filteredItineraries.map((itinerary) => (
-                        <TouchableOpacity
-                          key={itinerary.id}
+              <Text style={styles.label}>Destination *</Text>
+              <View style={styles.dropdownContainer}>
+                <View style={styles.customDropdown}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.destinationScroll}
+                  >
+                    {destinations.map((dest) => (
+                      <TouchableOpacity
+                        key={dest.id}
+                        style={[
+                          styles.destinationTag,
+                          selectedDestination === dest.name && styles.destinationTagActive,
+                        ]}
+                        onPress={() => setSelectedDestination(dest.name)}
+                      >
+                        <Text
                           style={[
-                            styles.dropdownItem,
-                            selectedItinerary?.id === itinerary.id && styles.dropdownItemSelected,
+                            styles.destinationTagText,
+                            selectedDestination === dest.name && styles.destinationTagTextActive,
                           ]}
-                          onPress={() => handleSelectItinerary(itinerary)}
                         >
-                          <View style={styles.dropdownItemContent}>
-                            <Text style={styles.dropdownItemName}>{itinerary.name}</Text>
-                            <Text style={styles.dropdownItemDetails}>
-                              {itinerary.days} Days • ${itinerary.cost_usd.toFixed(2)}
-                            </Text>
-                          </View>
-                          {selectedItinerary?.id === itinerary.id && (
-                            <Check size={20} color="#3b82f6" />
-                          )}
-                        </TouchableOpacity>
-                      ))
-                    )}
+                          {dest.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </ScrollView>
                 </View>
+              </View>
+
+              {selectedDestination && (
+                <>
+                  <Text style={styles.label}>Filter Itineraries</Text>
+
+                  <View style={styles.filtersContainer}>
+                    <View style={styles.filterItem}>
+                      <Text style={styles.filterLabel}>Passengers</Text>
+                      <TextInput
+                        style={styles.filterInput}
+                        placeholder="e.g., 2"
+                        value={filterPax}
+                        onChangeText={setFilterPax}
+                        keyboardType="numeric"
+                      />
+                    </View>
+
+                    <View style={styles.filterItem}>
+                      <Text style={styles.filterLabel}>Days</Text>
+                      <TextInput
+                        style={styles.filterInput}
+                        placeholder="e.g., 7"
+                        value={filterDays}
+                        onChangeText={setFilterDays}
+                        keyboardType="numeric"
+                      />
+                    </View>
+
+                    <View style={styles.filterItem}>
+                      <Text style={styles.filterLabel}>Transport Mode</Text>
+                      <View style={styles.transportDropdown}>
+                        {['Driver with cab', 'Self drive cab', 'Self drive scooter'].map((mode) => (
+                          <TouchableOpacity
+                            key={mode}
+                            style={[
+                              styles.transportOption,
+                              filterTransport === mode && styles.transportOptionActive,
+                            ]}
+                            onPress={() => setFilterTransport(filterTransport === mode ? '' : mode)}
+                          >
+                            <Text
+                              style={[
+                                styles.transportOptionText,
+                                filterTransport === mode && styles.transportOptionTextActive,
+                              ]}
+                            >
+                              {mode}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+
+                  <Text style={styles.label}>Select Itinerary</Text>
+                  <TouchableOpacity
+                    style={styles.dropdown}
+                    onPress={() => setShowItineraryDropdown(!showItineraryDropdown)}
+                  >
+                    <Text style={[styles.dropdownText, !selectedItinerary && styles.dropdownPlaceholder]}>
+                      {selectedItinerary ? selectedItinerary.name : 'Choose an itinerary...'}
+                    </Text>
+                    <ChevronDown size={20} color="#666" />
+                  </TouchableOpacity>
+
+                  {showItineraryDropdown && (
+                    <View style={styles.dropdownContent}>
+                      <View style={styles.searchContainer}>
+                        <Search size={16} color="#999" />
+                        <TextInput
+                          style={styles.searchInput}
+                          placeholder="Search itineraries..."
+                          value={itinerarySearchText}
+                          onChangeText={setItinerarySearchText}
+                          placeholderTextColor="#999"
+                        />
+                      </View>
+
+                      <ScrollView style={styles.dropdownList}>
+                        {filteredItineraries.length === 0 ? (
+                          <Text style={styles.emptyDropdownText}>No itineraries found</Text>
+                        ) : (
+                          filteredItineraries.map((itinerary) => (
+                            <TouchableOpacity
+                              key={itinerary.id}
+                              style={[
+                                styles.dropdownItem,
+                                selectedItinerary?.id === itinerary.id && styles.dropdownItemSelected,
+                              ]}
+                              onPress={() => handleSelectItinerary(itinerary)}
+                            >
+                              <View style={styles.dropdownItemContent}>
+                                <Text style={styles.dropdownItemName}>{itinerary.name}</Text>
+                                <Text style={styles.dropdownItemDetails}>
+                                  {itinerary.days} Days • ${itinerary.cost_usd.toFixed(2)}
+                                </Text>
+                              </View>
+                              {selectedItinerary?.id === itinerary.id && (
+                                <Check size={20} color="#3b82f6" />
+                              )}
+                            </TouchableOpacity>
+                          ))
+                        )}
+                      </ScrollView>
+                    </View>
+                  )}
+                </>
               )}
 
               {selectedItinerary && (
@@ -1032,5 +1154,86 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     minHeight: 60,
     textAlignVertical: 'top',
+  },
+  dropdownContainer: {
+    marginBottom: 16,
+  },
+  customDropdown: {
+    marginBottom: 12,
+  },
+  destinationScroll: {
+    paddingVertical: 4,
+  },
+  destinationTag: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f2f2f7',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#e5e5ea',
+  },
+  destinationTagActive: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
+  destinationTagText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  destinationTagTextActive: {
+    color: '#fff',
+  },
+  filtersContainer: {
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    gap: 12,
+  },
+  filterItem: {
+    marginBottom: 8,
+  },
+  filterLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 6,
+  },
+  filterInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#1a1a1a',
+  },
+  transportDropdown: {
+    gap: 8,
+  },
+  transportOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+  },
+  transportOptionActive: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
+  transportOptionText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  transportOptionTextActive: {
+    color: '#fff',
   },
 });
