@@ -11,7 +11,7 @@ import {
   Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Plus, Trash2, Search, Filter, X, ChevronDown, Check, Copy } from 'lucide-react-native';
+import { ArrowLeft, Plus, Trash2, Search, Filter, X, ChevronDown, Check, Copy, Edit } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { setUserContext } from '@/lib/auth-context';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,6 +34,7 @@ export default function SavedItineraryScreen() {
   const [filterTransport, setFilterTransport] = useState('');
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [showDestinationPicker, setShowDestinationPicker] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     destination_id: '',
@@ -175,7 +176,38 @@ export default function SavedItineraryScreen() {
       important_notes: '',
       disclaimers: '',
     });
+    setEditingId(null);
     setShowForm(false);
+  };
+
+  const handleEdit = (itinerary: Itinerary) => {
+    const transportMode = itinerary.mode_of_transport;
+    const baseName = itinerary.name
+      .replace(' (Driver with Cab)', '')
+      .replace(' (Self Drive Cab)', '')
+      .replace(' (Self Drive Scooter)', '');
+
+    setFormData({
+      destination_id: itinerary.destination_id || '',
+      destination_name: itinerary.destinations?.name || '',
+      name: baseName,
+      days: itinerary.days.toString(),
+      no_of_pax: itinerary.no_of_pax.toString(),
+      full_itinerary: itinerary.full_itinerary,
+      inclusions_driver: transportMode === 'driver_with_cab' ? itinerary.inclusions : '',
+      exclusions_driver: transportMode === 'driver_with_cab' ? itinerary.exclusions : '',
+      cost_usd_driver: transportMode === 'driver_with_cab' ? itinerary.cost_usd.toString() : '',
+      inclusions_self_drive_cab: transportMode === 'self_drive_cab' ? itinerary.inclusions : '',
+      exclusions_self_drive_cab: transportMode === 'self_drive_cab' ? itinerary.exclusions : '',
+      cost_usd_self_drive_cab: transportMode === 'self_drive_cab' ? itinerary.cost_usd.toString() : '',
+      inclusions_self_drive_scooter: transportMode === 'self_drive_scooter' ? itinerary.inclusions : '',
+      exclusions_self_drive_scooter: transportMode === 'self_drive_scooter' ? itinerary.exclusions : '',
+      cost_usd_self_drive_scooter: transportMode === 'self_drive_scooter' ? itinerary.cost_usd.toString() : '',
+      important_notes: itinerary.important_notes || '',
+      disclaimers: itinerary.disclaimers || '',
+    });
+    setEditingId(itinerary.id);
+    setShowForm(true);
   };
 
   const handleSave = async () => {
@@ -201,70 +233,130 @@ export default function SavedItineraryScreen() {
     try {
       setSaving(true);
 
-      const itinerariesToCreate: any[] = [];
+      if (editingId) {
+        const itinerary = itineraries.find(i => i.id === editingId);
+        if (!itinerary) throw new Error('Itinerary not found');
 
-      if (hasDriverData) {
-        itinerariesToCreate.push({
-          name: `${formData.name} (Driver with Cab)`,
+        const transportMode = itinerary.mode_of_transport;
+        let updateData: any = {
+          name: formData.name,
           destination_id: formData.destination_id,
           days: parseInt(formData.days),
           no_of_pax: parseInt(formData.no_of_pax),
           full_itinerary: formData.full_itinerary,
-          inclusions: formData.inclusions_driver,
-          exclusions: formData.exclusions_driver,
-          cost_usd: parseFloat(formData.cost_usd_driver),
-          cost_inr: parseFloat(formData.cost_usd_driver) * exchangeRate,
-          mode_of_transport: 'driver_with_cab',
           important_notes: formData.important_notes,
           disclaimers: formData.disclaimers,
-          created_by: user?.id,
-        });
+          updated_at: new Date().toISOString(),
+        };
+
+        if (transportMode === 'driver_with_cab' && hasDriverData) {
+          updateData = {
+            ...updateData,
+            name: `${formData.name} (Driver with Cab)`,
+            inclusions: formData.inclusions_driver,
+            exclusions: formData.exclusions_driver,
+            cost_usd: parseFloat(formData.cost_usd_driver),
+            cost_inr: parseFloat(formData.cost_usd_driver) * exchangeRate,
+          };
+        } else if (transportMode === 'self_drive_cab' && hasSelfDriveCabData) {
+          updateData = {
+            ...updateData,
+            name: `${formData.name} (Self Drive Cab)`,
+            inclusions: formData.inclusions_self_drive_cab,
+            exclusions: formData.exclusions_self_drive_cab,
+            cost_usd: parseFloat(formData.cost_usd_self_drive_cab),
+            cost_inr: parseFloat(formData.cost_usd_self_drive_cab) * exchangeRate,
+          };
+        } else if (transportMode === 'self_drive_scooter' && hasSelfDriveScooterData) {
+          updateData = {
+            ...updateData,
+            name: `${formData.name} (Self Drive Scooter)`,
+            inclusions: formData.inclusions_self_drive_scooter,
+            exclusions: formData.exclusions_self_drive_scooter,
+            cost_usd: parseFloat(formData.cost_usd_self_drive_scooter),
+            cost_inr: parseFloat(formData.cost_usd_self_drive_scooter) * exchangeRate,
+          };
+        } else {
+          Alert.alert('Error', 'Please fill in the transport mode data that matches the current itinerary');
+          setSaving(false);
+          return;
+        }
+
+        const { error } = await supabase
+          .from('itineraries')
+          .update(updateData)
+          .eq('id', editingId);
+
+        if (error) throw error;
+
+        Alert.alert('Success', 'Itinerary updated successfully');
+      } else {
+        const itinerariesToCreate: any[] = [];
+
+        if (hasDriverData) {
+          itinerariesToCreate.push({
+            name: `${formData.name} (Driver with Cab)`,
+            destination_id: formData.destination_id,
+            days: parseInt(formData.days),
+            no_of_pax: parseInt(formData.no_of_pax),
+            full_itinerary: formData.full_itinerary,
+            inclusions: formData.inclusions_driver,
+            exclusions: formData.exclusions_driver,
+            cost_usd: parseFloat(formData.cost_usd_driver),
+            cost_inr: parseFloat(formData.cost_usd_driver) * exchangeRate,
+            mode_of_transport: 'driver_with_cab',
+            important_notes: formData.important_notes,
+            disclaimers: formData.disclaimers,
+            created_by: user?.id,
+          });
+        }
+
+        if (hasSelfDriveCabData) {
+          itinerariesToCreate.push({
+            name: `${formData.name} (Self Drive Cab)`,
+            destination_id: formData.destination_id,
+            days: parseInt(formData.days),
+            no_of_pax: parseInt(formData.no_of_pax),
+            full_itinerary: formData.full_itinerary,
+            inclusions: formData.inclusions_self_drive_cab,
+            exclusions: formData.exclusions_self_drive_cab,
+            cost_usd: parseFloat(formData.cost_usd_self_drive_cab),
+            cost_inr: parseFloat(formData.cost_usd_self_drive_cab) * exchangeRate,
+            mode_of_transport: 'self_drive_cab',
+            important_notes: formData.important_notes,
+            disclaimers: formData.disclaimers,
+            created_by: user?.id,
+          });
+        }
+
+        if (hasSelfDriveScooterData) {
+          itinerariesToCreate.push({
+            name: `${formData.name} (Self Drive Scooter)`,
+            destination_id: formData.destination_id,
+            days: parseInt(formData.days),
+            no_of_pax: parseInt(formData.no_of_pax),
+            full_itinerary: formData.full_itinerary,
+            inclusions: formData.inclusions_self_drive_scooter,
+            exclusions: formData.exclusions_self_drive_scooter,
+            cost_usd: parseFloat(formData.cost_usd_self_drive_scooter),
+            cost_inr: parseFloat(formData.cost_usd_self_drive_scooter) * exchangeRate,
+            mode_of_transport: 'self_drive_scooter',
+            important_notes: formData.important_notes,
+            disclaimers: formData.disclaimers,
+            created_by: user?.id,
+          });
+        }
+
+        const { error } = await supabase.from('itineraries').insert(itinerariesToCreate);
+
+        if (error) throw error;
+
+        Alert.alert(
+          'Success',
+          `Created ${itinerariesToCreate.length} itinerary variant(s) successfully`
+        );
       }
 
-      if (hasSelfDriveCabData) {
-        itinerariesToCreate.push({
-          name: `${formData.name} (Self Drive Cab)`,
-          destination_id: formData.destination_id,
-          days: parseInt(formData.days),
-          no_of_pax: parseInt(formData.no_of_pax),
-          full_itinerary: formData.full_itinerary,
-          inclusions: formData.inclusions_self_drive_cab,
-          exclusions: formData.exclusions_self_drive_cab,
-          cost_usd: parseFloat(formData.cost_usd_self_drive_cab),
-          cost_inr: parseFloat(formData.cost_usd_self_drive_cab) * exchangeRate,
-          mode_of_transport: 'self_drive_cab',
-          important_notes: formData.important_notes,
-          disclaimers: formData.disclaimers,
-          created_by: user?.id,
-        });
-      }
-
-      if (hasSelfDriveScooterData) {
-        itinerariesToCreate.push({
-          name: `${formData.name} (Self Drive Scooter)`,
-          destination_id: formData.destination_id,
-          days: parseInt(formData.days),
-          no_of_pax: parseInt(formData.no_of_pax),
-          full_itinerary: formData.full_itinerary,
-          inclusions: formData.inclusions_self_drive_scooter,
-          exclusions: formData.exclusions_self_drive_scooter,
-          cost_usd: parseFloat(formData.cost_usd_self_drive_scooter),
-          cost_inr: parseFloat(formData.cost_usd_self_drive_scooter) * exchangeRate,
-          mode_of_transport: 'self_drive_scooter',
-          important_notes: formData.important_notes,
-          disclaimers: formData.disclaimers,
-          created_by: user?.id,
-        });
-      }
-
-      const { error } = await supabase.from('itineraries').insert(itinerariesToCreate);
-
-      if (error) throw error;
-
-      Alert.alert(
-        'Success',
-        `Created ${itinerariesToCreate.length} itinerary variant(s) successfully`
-      );
       resetForm();
       fetchItineraries();
     } catch (error: any) {
@@ -432,6 +524,13 @@ ${itinerary.important_notes ? `Important Notes:\n${itinerary.important_notes}\n\
               </View>
               <View style={styles.cardActions}>
                 <TouchableOpacity
+                  onPress={() => handleEdit(itinerary)}
+                  style={styles.actionButton}
+                >
+                  <Edit size={18} color="#8b5cf6" />
+                  <Text style={[styles.actionButtonText, styles.editText]}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
                   onPress={() => handleCopy(itinerary)}
                   style={styles.actionButton}
                 >
@@ -459,7 +558,9 @@ ${itinerary.important_notes ? `Important Notes:\n${itinerary.important_notes}\n\
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Add New Itinerary</Text>
+            <Text style={styles.modalTitle}>
+              {editingId ? 'Edit Itinerary' : 'Add New Itinerary'}
+            </Text>
             <TouchableOpacity onPress={() => setShowForm(false)}>
               <X size={24} color="#333" />
             </TouchableOpacity>
@@ -908,6 +1009,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#3b82f6',
+  },
+  editText: {
+    color: '#8b5cf6',
   },
   deleteText: {
     color: '#ef4444',
