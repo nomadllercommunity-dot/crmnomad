@@ -55,6 +55,10 @@ export default function ManageDestinationsScreen() {
     setError('');
 
     try {
+      if (user?.id && user?.role) {
+        await setUserContext(user.id, user.role);
+      }
+
       const { data, error: insertError } = await supabase
         .from('destinations')
         .insert({
@@ -94,6 +98,10 @@ export default function ManageDestinationsScreen() {
           onPress: async () => {
             setDeleting(id);
             try {
+              if (user?.id && user?.role) {
+                await setUserContext(user.id, user.role);
+              }
+
               const { error } = await supabase
                 .from('destinations')
                 .delete()
@@ -116,6 +124,10 @@ export default function ManageDestinationsScreen() {
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     try {
+      if (user?.id && user?.role) {
+        await setUserContext(user.id, user.role);
+      }
+
       const { error } = await supabase
         .from('destinations')
         .update({ is_active: !currentStatus })

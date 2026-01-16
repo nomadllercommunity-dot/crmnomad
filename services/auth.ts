@@ -26,8 +26,7 @@ export async function loginUser(username: string, password: string): Promise<Use
 
     await supabase
       .rpc('set_user_context', {
-        user_id: user.id,
-        user_role: user.role
+        user_id: user.id
       });
 
     await supabase
