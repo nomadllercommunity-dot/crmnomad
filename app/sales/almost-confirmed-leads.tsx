@@ -25,9 +25,9 @@ export default function AlmostConfirmedLeadsScreen() {
     try {
       const { data: followUpData, error: followUpError } = await supabase
         .from('follow_ups')
-        .select('lead_id, follow_up_date, remark')
+        .select('lead_id, follow_up_date, follow_up_note, remark')
         .eq('sales_person_id', user?.id)
-        .eq('update_type', 'almost_confirmed')
+        .eq('action_type', 'almost_confirmed')
         .order('follow_up_date', { ascending: false });
 
       if (followUpError) throw followUpError;
@@ -52,7 +52,7 @@ export default function AlmostConfirmedLeadsScreen() {
         return {
           ...lead,
           last_follow_up_date: followUp?.follow_up_date || '',
-          follow_up_remark: followUp?.remark || null,
+          follow_up_remark: followUp?.follow_up_note || followUp?.remark || null,
         };
       });
 
