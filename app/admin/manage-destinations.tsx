@@ -117,6 +117,10 @@ export default function ManageDestinationsScreen() {
 
   const performDelete = async (id: string) => {
     try {
+      if (user?.id) {
+        await setUserContext(user.id);
+      }
+
       const { error } = await supabase.from('destinations').delete().eq('id', id);
 
       if (error) {
