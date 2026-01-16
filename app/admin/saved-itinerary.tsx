@@ -11,11 +11,12 @@ import {
   Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Plus, Trash2, Search, Filter, X, ChevronDown, Check } from 'lucide-react-native';
+import { ArrowLeft, Plus, Trash2, Search, Filter, X, ChevronDown, Check, Copy } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { setUserContext } from '@/lib/auth-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { Destination, Itinerary } from '@/types';
+import * as Clipboard from 'expo-clipboard';
 
 export default function SavedItineraryScreen() {
   const router = useRouter();
@@ -299,6 +300,29 @@ export default function SavedItineraryScreen() {
     );
   };
 
+  const handleCopy = async (itinerary: Itinerary) => {
+    const text = `
+${itinerary.name}
+${itinerary.days} Days | ${itinerary.no_of_pax} Passengers
+
+Full Itinerary:
+${itinerary.full_itinerary}
+
+Inclusions:
+${itinerary.inclusions}
+
+Exclusions:
+${itinerary.exclusions || 'N/A'}
+
+Cost: $${itinerary.cost_usd} (₹${itinerary.cost_inr.toFixed(2)})
+
+${itinerary.important_notes ? `Important Notes:\n${itinerary.important_notes}\n\n` : ''}${itinerary.disclaimers ? `Disclaimers:\n${itinerary.disclaimers}` : ''}
+    `.trim();
+
+    await Clipboard.setStringAsync(text);
+    Alert.alert('Success', 'Itinerary copied to clipboard');
+  };
+
   const getTransportBadgeColor = (mode?: string) => {
     switch (mode) {
       case 'driver_with_cab': return '#3b82f6';
@@ -406,13 +430,22 @@ export default function SavedItineraryScreen() {
                 <Text style={styles.cardDetail}>•</Text>
                 <Text style={styles.cardDetail}>${itinerary.cost_usd}</Text>
               </View>
-              <TouchableOpacity
-                onPress={() => handleDelete(itinerary.id)}
-                style={styles.deleteButton}
-              >
-                <Trash2 size={18} color="#ef4444" />
-                <Text style={styles.deleteButtonText}>Delete</Text>
-              </TouchableOpacity>
+              <View style={styles.cardActions}>
+                <TouchableOpacity
+                  onPress={() => handleCopy(itinerary)}
+                  style={styles.actionButton}
+                >
+                  <Copy size={18} color="#3b82f6" />
+                  <Text style={styles.actionButtonText}>Copy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleDelete(itinerary.id)}
+                  style={styles.actionButton}
+                >
+                  <Trash2 size={18} color="#ef4444" />
+                  <Text style={[styles.actionButtonText, styles.deleteText]}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))
         )}
@@ -855,17 +888,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
   },
-  deleteButton: {
+  cardActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    gap: 12,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#f3f4f6',
   },
-  deleteButtonText: {
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#f9fafb',
+  },
+  actionButtonText: {
     fontSize: 14,
     fontWeight: '500',
+    color: '#3b82f6',
+  },
+  deleteText: {
     color: '#ef4444',
   },
   modalContainer: {
