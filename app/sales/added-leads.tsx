@@ -16,6 +16,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { setUserContext } from '@/lib/auth-context';
 import { Lead, Destination, Itinerary } from '@/types';
 import { ArrowLeft, Phone, MessageCircle, X, Calendar, Users, MapPin, DollarSign, ChevronDown, Search, Check } from 'lucide-react-native';
 import DateTimePickerComponent from '@/components/DateTimePicker';
@@ -156,11 +157,9 @@ export default function AddedLeadsScreen() {
   };
 
   const fetchDestinations = async () => {
-    try {
-      await supabase.rpc('exec', {
-        sql: `SELECT set_config('app.current_user_id', '${user?.id}', true)`,
-      }).then(() => {});
-    } catch (e) {}
+    if (user?.id) {
+      await setUserContext(user.id);
+    }
 
     try {
       const { data, error } = await supabase

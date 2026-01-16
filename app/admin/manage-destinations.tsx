@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Plus, Edit, Trash2, Search, MapPin } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
+import { setUserContext } from '@/lib/auth-context';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Destination {
@@ -60,11 +61,9 @@ export default function ManageDestinationsScreen() {
   };
 
   const fetchDestinations = async () => {
-    try {
-      await supabase.rpc('exec', {
-        sql: `SELECT set_config('app.current_user_id', '${user?.id}', true)`,
-      }).then(() => {});
-    } catch (e) {}
+    if (user?.id) {
+      await setUserContext(user.id);
+    }
 
     try {
       const { data, error } = await supabase
@@ -118,9 +117,9 @@ export default function ManageDestinationsScreen() {
 
   const performDelete = async (id: string) => {
     try {
-      await supabase.rpc('exec', {
-        sql: `SELECT set_config('app.current_user_id', '${user?.id}', true)`,
-      }).then(() => {});
+      if (user?.id) {
+        await setUserContext(user.id);
+      }
 
       const { error } = await supabase.from('destinations').delete().eq('id', id);
 
@@ -142,9 +141,9 @@ export default function ManageDestinationsScreen() {
 
     setSaving(true);
     try {
-      await supabase.rpc('exec', {
-        sql: `SELECT set_config('app.current_user_id', '${user?.id}', true)`,
-      }).then(() => {});
+      if (user?.id) {
+        await setUserContext(user.id);
+      }
 
       if (editingId) {
         const { error } = await supabase

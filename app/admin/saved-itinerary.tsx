@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Plus, Trash2, Search, Filter, X, ChevronDown, Check } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
+import { setUserContext } from '@/lib/auth-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { Destination, Itinerary } from '@/types';
 
@@ -105,11 +106,9 @@ export default function SavedItineraryScreen() {
   };
 
   const fetchDestinations = async () => {
-    try {
-      await supabase.rpc('exec', {
-        sql: `SELECT set_config('app.current_user_id', '${user?.id}', true)`,
-      }).then(() => {});
-    } catch (e) {}
+    if (user?.id) {
+      await setUserContext(user.id);
+    }
 
     try {
       const { data, error } = await supabase
