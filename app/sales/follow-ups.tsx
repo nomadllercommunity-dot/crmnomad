@@ -71,6 +71,7 @@ export default function FollowUpsScreen() {
     { label: 'Itinerary Sent', value: 'itinerary_sent' },
     { label: 'Itinerary Updated', value: 'itinerary_updated' },
     { label: 'Follow Up', value: 'follow_up' },
+    { label: 'Almost Confirmed', value: 'almost_confirmed' },
     { label: 'Confirm and Advance Paid', value: 'confirmed_advance_paid' },
     { label: 'Dead', value: 'dead' },
   ];
