@@ -19,6 +19,7 @@ interface FollowUpWithLead {
     client_name: string;
     place: string;
     no_of_pax: number;
+    contact_number: string | null;
   };
 }
 
@@ -115,7 +116,7 @@ export default function FollowUpsScreen() {
         .from('follow_ups')
         .select(`
           *,
-          lead:leads(id, client_name, place, no_of_pax)
+          lead:leads(id, client_name, place, no_of_pax, contact_number)
         `)
         .eq('sales_person_id', user?.id)
         .eq('status', 'pending')
@@ -476,6 +477,17 @@ This is a 7-day advance reminder for the travel date.`;
                     </View>
                     <Text style={styles.cardActionButtonText}>History</Text>
                   </TouchableOpacity>
+                  {followUp.lead.contact_number && (
+                    <TouchableOpacity
+                      style={styles.cardActionButton}
+                      onPress={() => handleWhatsApp(followUp.lead.contact_number!, followUp.lead.client_name, followUp.lead.place)}
+                    >
+                      <View style={styles.buttonIconContainer}>
+                        <MessageCircle size={16} color="#25D366" />
+                      </View>
+                      <Text style={styles.cardActionButtonText}>WhatsApp</Text>
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity
                     style={styles.cardActionButton}
                     onPress={() => {
@@ -514,8 +526,31 @@ This is a 7-day advance reminder for the travel date.`;
 
             {currentLead && (
               <View style={styles.leadInfo}>
-                <Text style={styles.leadInfoName}>{currentLead.client_name}</Text>
-                <Text style={styles.leadInfoDetail}>{currentLead.place} • {currentLead.no_of_pax} Pax</Text>
+                <View style={styles.leadInfoHeader}>
+                  <View style={styles.leadInfoText}>
+                    <Text style={styles.leadInfoName}>{currentLead.client_name}</Text>
+                    <Text style={styles.leadInfoDetail}>{currentLead.place} • {currentLead.no_of_pax} Pax</Text>
+                    {currentLead.contact_number && (
+                      <Text style={styles.leadInfoContact}>{currentLead.contact_number}</Text>
+                    )}
+                  </View>
+                  {currentLead.contact_number && (
+                    <View style={styles.leadInfoActions}>
+                      <TouchableOpacity
+                        style={styles.leadInfoActionButton}
+                        onPress={() => handleCall(currentLead.contact_number, currentLead)}
+                      >
+                        <Phone size={18} color="#fff" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.leadInfoActionButton, styles.whatsappButton]}
+                        onPress={() => handleWhatsApp(currentLead.contact_number, currentLead.client_name, currentLead.place)}
+                      >
+                        <MessageCircle size={18} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
               </View>
             )}
 
@@ -1052,7 +1087,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#3b82f6',
   },
   whatsappButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#25D366',
   },
   actionButtonText: {
     color: '#fff',
@@ -1097,6 +1132,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 20,
   },
+  leadInfoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  leadInfoText: {
+    flex: 1,
+    marginRight: 12,
+  },
   leadInfoName: {
     fontSize: 16,
     fontWeight: '600',
@@ -1106,6 +1150,29 @@ const styles = StyleSheet.create({
   leadInfoDetail: {
     fontSize: 14,
     color: '#666',
+    marginBottom: 4,
+  },
+  leadInfoContact: {
+    fontSize: 13,
+    color: '#3b82f6',
+    fontWeight: '500',
+  },
+  leadInfoActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  leadInfoActionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#3b82f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   formGroup: {
     marginBottom: 16,
